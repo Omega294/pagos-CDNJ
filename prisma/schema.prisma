@@ -1,0 +1,187 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// CORE 1: AUTENTICACIÓN, ROLES Y PERMISOS (RBAC)
+// ==========================================
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  username      String         @unique
+  passwordHash  String
+  fullName      String
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  userRoles     UserRole[]
+  cashClosings  CashClosing[]  @relation("ClosedBy")
+  payments      Payment[]      @relation("ProcessedBy")
+  voidedPayments Payment[]     @relation("VoidedBy")
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  isSystem    Boolean          @default(false)
+  
+  userRoles   UserRole[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  code        String           @unique
+  module      String
+  resource    String
+  action      String
+  description String?
+
+  rolePermissions RolePermission[]
+}
+
+model UserRole {
+  userId  String
+  roleId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+// ==========================================
+// MÓDULO DE COBRO DE MENSUALIDADES
+// ==========================================
+
+model Guardian {
+  id            String     @id @default(uuid())
+  docId         String     @unique
+  fullName      String
+  email         String?
+  phone         String
+  address       String?
+  
+  students      StudentGuardian[]
+}
+
+model Student {
+  id            String     @id @default(uuid())
+  studentCode   String     @unique
+  docId         String?    @unique
+  firstName     String
+  lastName      String
+  grade         String
+  status        String     @default("ACTIVE")
+
+  guardians     StudentGuardian[]
+  debts         StudentDebt[]
+}
+
+model StudentGuardian {
+  studentId   String
+  guardianId  String
+  relationship String
+  isPrimary   Boolean  @default(true)
+
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardian    Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, guardianId])
+}
+
+model FeeConcept {
+  id          String     @id @default(uuid())
+  name        String
+  amountUSD   Float
+  code        String     @unique
+  isRecurring Boolean    @default(true)
+  isActive    Boolean    @default(true)
+
+  debts       StudentDebt[]
+}
+
+model StudentDebt {
+  id            String     @id @default(uuid())
+  studentId     String
+  feeConceptId  String
+  amountUSD     Float
+  dueDate       DateTime
+  status        String     @default("PENDING") // PENDING, PAID, CANCELLED
+
+  student       Student    @relation(fields: [studentId], references: [id])
+  feeConcept    FeeConcept @relation(fields: [feeConceptId], references: [id])
+  paymentDetails PaymentDetail[]
+}
+
+model Payment {
+  id             String          @id @default(uuid())
+  receiptNumber  String          @unique
+  userId         String
+  totalUSD       Float
+  exchangeRate   Float
+  totalLocal     Float
+  status         String          @default("COMPLETED") // COMPLETED, VOIDED
+  voidReason     String?
+  voidedById     String?
+  voidedAt       DateTime?
+  createdAt      DateTime        @default(now())
+
+  processedBy    User            @relation("ProcessedBy", fields: [userId], references: [id])
+  voidedBy       User?           @relation("VoidedBy", fields: [voidedById], references: [id])
+  paymentItems   PaymentDetail[]
+  methods        PaymentMethodDetail[]
+}
+
+model PaymentDetail {
+  id            String      @id @default(uuid())
+  paymentId     String
+  debtId        String
+  amountPaidUSD Float
+
+  payment       Payment     @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  debt          StudentDebt @relation(fields: [debtId], references: [id])
+}
+
+model PaymentMethodDetail {
+  id            String   @id @default(uuid())
+  paymentId     String
+  method        String
+  amount        Float
+  currency      String
+  reference     String?
+
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+}
+
+model CashClosing {
+  id             String    @id @default(uuid())
+  closingNumber  String    @unique
+  userId         String
+  openedAt       DateTime
+  closedAt       DateTime  @default(now())
+  totalCashUSD   Float
+  totalCashLocal Float
+  totalDigitalUSD Float
+  totalDigitalLocal Float
+  grandTotalUSD  Float
+  notes          String?
+
+  closedBy       User      @relation("ClosedBy", fields: [userId], references: [id])
+}
