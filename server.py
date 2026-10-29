@@ -4055,11 +4055,7 @@ def run():
     t.start()
     with ThreadedTCPServer(("", PORT), CDNJHandler) as httpd:
         print(f"🚀 CDNJ Server corriendo en http://localhost:{PORT} (Multi-hilo concurrente activado)")
-        print("🔑 Credenciales Demo:")
-        print("   - Kraig / Choco*32    (Rol: SUPERADMIN - Principal)")
-        print("   - cajera / 123456     (Rol: CAJERA)")
-        print("   - admin / 123456      (Rol: ADMINISTRADOR)")
-        print("   - superadmin / 123456 (Rol: SUPERADMIN)")
+        print("🔒 Acceso con autenticación obligatoria activo (Modo demo desactivado)")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

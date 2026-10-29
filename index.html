@@ -275,18 +275,6 @@
       return perms.includes(code);
     }
 
-    async function loginDemo(username) {
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password: '123456' })
-        });
-        const data = await res.json();
-        if (res.ok) setAuth(data.token, data.user);
-      } catch (e) { console.error(e); }
-    }
-
     // Main Render Controller
     function render() {
       const app = document.getElementById('app');
@@ -376,22 +364,14 @@
                   </div>
                 </div>
 
-                <!-- Quick Demo Switcher & Time Machine -->
-                <div style="display:flex; align-items:center; gap:0.6rem;">
-                  <div style="display:flex; align-items:center; gap:0.4rem; background:rgba(11,15,25,0.7); padding:0.3rem 0.6rem; border-radius:9999px; border:1px solid rgba(255,255,255,0.1);">
-                    <span style="font-size:0.75rem; color:#9ca3af; font-weight:600;">Rol Demo:</span>
-                    <button onclick="loginDemo('cajera')" class="btn btn-sm ${state.user?.username==='cajera'?'btn-accent':'btn-secondary'}" style="padding:0.15rem 0.5rem;">Cajera</button>
-                    <button onclick="loginDemo('admin')" class="btn btn-sm ${state.user?.username==='admin'?'btn-primary':'btn-secondary'}" style="padding:0.15rem 0.5rem;">Admin</button>
-                    <button onclick="loginDemo('superadmin')" class="btn btn-sm ${state.user?.username==='superadmin'?'btn-primary':'btn-secondary'}" style="padding:0.15rem 0.5rem; background:${state.user?.username==='superadmin'?'#8b5cf6':''};">Superadmin</button>
-                  </div>
-
-                  <!-- Time Machine Control Widget -->
+                <!-- Time Machine Control Widget (EXCLUSIVO SUPERADMIN PARA PRUEBAS) -->
+                ${(state.user?.roles && state.user.roles.includes('SUPERADMIN')) ? `
                   <div style="display:flex; align-items:center; gap:0.4rem; background:${state.timeSimulationData?.isSimulated ? 'rgba(234,179,8,0.15)' : 'rgba(99,102,241,0.15)'}; padding:0.3rem 0.65rem; border-radius:9999px; border:1px solid ${state.timeSimulationData?.isSimulated ? 'rgba(234,179,8,0.5)' : 'rgba(99,102,241,0.3)'};">
                     <i data-lucide="clock" size="15" color="${state.timeSimulationData?.isSimulated ? '#facc15' : '#818cf8'}"></i>
                     <span style="font-size:0.725rem; color:${state.timeSimulationData?.isSimulated ? '#facc15' : '#e0e7ff'}; font-weight:700;">
                       ${state.timeSimulationData?.isSimulated ? `⏰ ${state.timeSimulationData.simulatedDateFormatted.split(' - ')[0]}` : `⏰ Reloj Real`}
                     </span>
-                    <button onclick="state.showTimeMachineModal = true; render();" class="btn btn-sm" style="padding:0.15rem 0.45rem; font-size:0.7rem; background:${state.timeSimulationData?.isSimulated ? '#eab308' : '#6366f1'}; color:#fff; border:none; border-radius:6px; cursor:pointer;" title="Abrir Control Temporal">
+                    <button onclick="state.showTimeMachineModal = true; render();" class="btn btn-sm" style="padding:0.15rem 0.45rem; font-size:0.7rem; background:${state.timeSimulationData?.isSimulated ? '#eab308' : '#6366f1'}; color:#fff; border:none; border-radius:6px; cursor:pointer;" title="Abrir Control Temporal de Pruebas">
                       <i data-lucide="fast-forward" size="12"></i> Máquina del Tiempo
                     </button>
                     ${state.timeSimulationData?.isSimulated ? `
@@ -400,7 +380,7 @@
                       </button>
                     ` : ''}
                   </div>
-                </div>
+                ` : ''}
 
                 <div style="display:flex; align-items:center; gap:1rem;">
                   <div style="text-align:right;">
@@ -414,11 +394,11 @@
                 </div>
               </header>
 
-              ${state.timeSimulationData?.isSimulated ? `
+              ${(state.timeSimulationData?.isSimulated && state.user?.roles && state.user.roles.includes('SUPERADMIN')) ? `
                 <div style="background:linear-gradient(90deg, rgba(234,179,8,0.25), rgba(245,158,11,0.25)); border-bottom:1px solid rgba(234,179,8,0.4); padding:0.5rem 1.5rem; display:flex; align-items:center; justify-content:space-between; font-size:0.825rem; color:#fef08a; flex-wrap:wrap; gap:0.5rem;">
                   <div style="display:flex; align-items:center; gap:0.5rem;">
                     <i data-lucide="alert-triangle" size="18" color="#facc15"></i>
-                    <span><strong>MODO SIMULACIÓN TEMPORAL ACTIVO:</strong> Operando en la fecha simulada <strong>${state.timeSimulationData.simulatedDateFormatted}</strong>.</span>
+                    <span><strong>PRUEBAS SUPERADMIN - SIMULACIÓN TEMPORAL:</strong> Operando en fecha simulada <strong>${state.timeSimulationData.simulatedDateFormatted}</strong>.</span>
                   </div>
                   <div style="display:flex; gap:0.5rem; align-items:center;">
                     <button onclick="advanceTimeSimulation({ daysToAdvance: 1 });" class="btn btn-sm" style="font-size:0.75rem; padding:0.2rem 0.5rem; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); color:#fff; cursor:pointer;">⏩ +1 Día</button>
@@ -440,7 +420,7 @@
           ${state.showPaymentConfirmModal ? renderPaymentConfirmModalHTML() : ''}
           ${state.showStudentModal ? renderStudentModalHTML() : ''}
           ${state.showBatchModal ? renderBatchModalHTML() : ''}
-          ${state.showTimeMachineModal ? renderTimeMachineModalHTML() : ''}
+          ${(state.showTimeMachineModal && state.user?.roles && state.user.roles.includes('SUPERADMIN')) ? renderTimeMachineModalHTML() : ''}
           ${state.showPaperCheckModal ? renderPaperCheckModalHTML() : ''}
           ${state.showPaperBatchModal ? renderPaperBatchModalHTML() : ''}
           ${state.showAdvanceModal ? renderAdvanceModalHTML() : ''}
@@ -464,76 +444,48 @@
       }
     }
 
-    async function loginDemo(username) {
-      const btnContainer = document.getElementById('login_error_box');
-      if (btnContainer) btnContainer.innerHTML = '<span style="color:#818cf8;">Iniciando sesión demo...</span>';
-      try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password: '123456' })
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setAuth(data.token, data.user);
-        } else {
-          if (btnContainer) btnContainer.innerHTML = `<span style="color:#ef4444;">${data.message || 'Error al iniciar sesión'}</span>`;
-          alert(data.message || 'Error al iniciar sesión');
-        }
-      } catch (e) {
-        console.error('Error de red loginDemo:', e);
-        if (btnContainer) btnContainer.innerHTML = `<span style="color:#ef4444;">Error de conexión con el servidor REST (${API_BASE || 'http://localhost:3000'}).</span>`;
-        alert(`Error de conexión con el servidor REST. Asegúrese de ingresar mediante http://localhost:3000 o que server.py esté corriendo.`);
-      }
-    }
-
     function renderLogin() {
       return `
-        <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem; background:radial-gradient(circle at top right, rgba(99,102,241,0.15), transparent 40%), radial-gradient(circle at bottom left, rgba(16,185,129,0.15), transparent 40%);">
-          <div style="width:100%; max-width:920px; display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:center;">
-            <div>
-              <div style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.3rem 0.8rem; border-radius:9999px; background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#818cf8; font-size:0.8rem; font-weight:700; margin-bottom:1rem;">
-                <i data-lucide="shield-check"></i> CDNJ School Platform
-              </div>
-              <h1 style="font-size:2.2rem; font-weight:800; line-height:1.1; margin-bottom:1rem;">Arquitectura Modular & RBAC Granular</h1>
-              <p style="color:#9ca3af; font-size:0.95rem; margin-bottom:1.5rem;">
-                Accede al sistema y prueba el módulo de <strong>Cobro de Mensualidades y Cierre de Caja</strong> con control de permisos estricto.
-              </p>
-
-              <div style="display:flex; flex-direction:column; gap:0.6rem;">
-                <span style="font-size:0.75rem; font-weight:700; color:#6b7280; text-transform:uppercase;">Acceso Rápido Demo (1-Click):</span>
-                <div onclick="loginDemo('cajera')" class="glass-card" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                  <div><strong style="color:#10b981;">Rol: CAJERA (María González)</strong><br><span style="font-size:0.8rem; color:#9ca3af;">Registrar cobros y emitir recibos</span></div>
-                  <i data-lucide="arrow-right" color="#10b981"></i>
+        <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem; background:radial-gradient(circle at top right, rgba(99,102,241,0.15), transparent 45%), radial-gradient(circle at bottom left, rgba(16,185,129,0.15), transparent 45%), #0b0f19;">
+          <div style="width:100%; max-width:440px;">
+            <div class="glass-panel" style="padding:2.5rem 2rem; border-radius:16px; border:1px solid rgba(255,255,255,0.12); box-shadow:0 20px 50px rgba(0,0,0,0.5);">
+              
+              <div style="text-align:center; margin-bottom:2rem;">
+                <div style="width:56px; height:56px; border-radius:14px; background:linear-gradient(135deg, #4f46e5, #10b981); display:flex; align-items:center; justify-content:center; font-size:1.8rem; margin:0 auto 1rem auto; box-shadow:0 8px 24px rgba(99,102,241,0.35);">
+                  🎓
                 </div>
-                <div onclick="loginDemo('admin')" class="glass-card" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                  <div><strong style="color:#6366f1;">Rol: ADMINISTRADOR (Lic. Ana Martínez)</strong><br><span style="font-size:0.8rem; color:#9ca3af;">Supervisión, anulación con motivo y cierre de caja</span></div>
-                  <i data-lucide="arrow-right" color="#6366f1"></i>
-                </div>
-                <div onclick="loginDemo('superadmin')" class="glass-card" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-                  <div><strong style="color:#a855f7;">Rol: SUPERADMIN</strong><br><span style="font-size:0.8rem; color:#9ca3af;">Control total (*)</span></div>
-                  <i data-lucide="arrow-right" color="#a855f7"></i>
+                <h1 style="font-size:1.5rem; font-weight:800; color:#f3f4f6; margin:0 0 0.4rem 0;">U.E. Colegio CDNJ</h1>
+                <p style="font-size:0.85rem; color:#9ca3af; margin:0;">Sistema de Gestión Escolar y Cobranza</p>
+                <div style="display:inline-flex; align-items:center; gap:0.35rem; margin-top:0.65rem; padding:0.25rem 0.65rem; border-radius:9999px; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.25); color:#818cf8; font-size:0.75rem; font-weight:700;">
+                  <i data-lucide="shield-check" size="14"></i> Acceso con Credenciales Obligatorio
                 </div>
               </div>
-            </div>
-
-            <div class="glass-panel" style="padding:2rem;">
-              <h2 style="font-size:1.4rem; font-weight:700; margin-bottom:0.5rem;">Iniciar Sesión</h2>
-              <p style="font-size:0.85rem; color:#9ca3af; margin-bottom:1.5rem;">Usa una cuenta demo o las credenciales:</p>
 
               <div id="login_error_box" style="font-size:0.85rem; margin-bottom:1rem; font-weight:600;"></div>
 
               <form onsubmit="handleLoginForm(event)">
-                <div style="margin-bottom:1rem;">
-                  <label style="font-size:0.8rem; font-weight:600; color:#9ca3af; text-transform:uppercase;">Usuario</label>
-                  <input id="login_user" type="text" class="input-field" value="cajera" required />
+                <div style="margin-bottom:1.25rem;">
+                  <label style="font-size:0.75rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:0.4rem;">
+                    Usuario
+                  </label>
+                  <input id="login_user" type="text" class="input-field" placeholder="Ingresa tu usuario" style="font-size:0.95rem;" required autofocus autocomplete="username" />
                 </div>
-                <div style="margin-bottom:1.5rem;">
-                  <label style="font-size:0.8rem; font-weight:600; color:#9ca3af; text-transform:uppercase;">Contraseña</label>
-                  <input id="login_pass" type="password" class="input-field" value="123456" required />
+
+                <div style="margin-bottom:1.75rem;">
+                  <label style="font-size:0.75rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:0.4rem;">
+                    Contraseña
+                  </label>
+                  <input id="login_pass" type="password" class="input-field" placeholder="••••••••" style="font-size:0.95rem;" required autocomplete="current-password" />
                 </div>
-                <button type="submit" id="btn_submit_login" class="btn btn-primary" style="width:100%;">Acceder al Sistema</button>
+
+                <button type="submit" id="btn_submit_login" class="btn btn-primary" style="width:100%; padding:0.8rem; font-weight:800; font-size:0.95rem; background:linear-gradient(135deg, #4f46e5, #4338ca); border:none; border-radius:10px; box-shadow:0 4px 15px rgba(79,70,229,0.35);">
+                  Iniciar Sesión
+                </button>
               </form>
+
+              <div style="text-align:center; margin-top:1.5rem; font-size:0.75rem; color:#6b7280; line-height:1.4;">
+                🔒 El acceso en modo demo ha sido desactivado.<br>Introduce las credenciales asignadas por la administración.
+              </div>
             </div>
           </div>
         </div>
@@ -542,12 +494,17 @@
 
     async function handleLoginForm(e) {
       e.preventDefault();
-      const u = document.getElementById('login_user').value;
+      const u = document.getElementById('login_user').value.trim();
       const p = document.getElementById('login_pass').value;
       const errBox = document.getElementById('login_error_box');
       const btn = document.getElementById('btn_submit_login');
       
-      if (btn) btn.innerText = 'Ingresando...';
+      if (!u || !p) {
+        if (errBox) errBox.innerHTML = '<span style="color:#ef4444;">Por favor introduce tu usuario y contraseña.</span>';
+        return;
+      }
+
+      if (btn) btn.innerText = 'Validando credenciales...';
       if (errBox) errBox.innerHTML = '';
 
       try {
@@ -560,13 +517,13 @@
         if (res.ok) {
           setAuth(data.token, data.user);
         } else {
-          if (errBox) errBox.innerHTML = `<span style="color:#ef4444;">${data.message || 'Credenciales incorrectas'}</span>`;
-          if (btn) btn.innerText = 'Acceder al Sistema';
+          if (errBox) errBox.innerHTML = `<span style="color:#ef4444;">⚠️ ${data.message || 'Usuario o contraseña incorrectos'}</span>`;
+          if (btn) btn.innerText = 'Iniciar Sesión';
         }
       } catch (err) {
         console.error(err);
         if (errBox) errBox.innerHTML = `<span style="color:#ef4444;">Error de conexión con el servidor REST (${API_BASE || 'http://localhost:3000'}).</span>`;
-        if (btn) btn.innerText = 'Acceder al Sistema';
+        if (btn) btn.innerText = 'Iniciar Sesión';
       }
     }
 
@@ -4010,6 +3967,7 @@
     }
 
     function renderTimeMachineModalHTML() {
+      if (!state.user?.roles || !state.user.roles.includes('SUPERADMIN')) return '';
       const currentSim = state.timeSimulationData?.simulatedDateFormatted || 'Cargando...';
       const realTime = state.timeSimulationData?.realDateFormatted || 'Cargando...';
       const isSimulated = state.timeSimulationData?.isSimulated || false;
@@ -4021,7 +3979,7 @@
             
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
               <div>
-                <span class="badge badge-primary" style="font-size:0.7rem; font-weight:800; background:#8b5cf6;">DEMO & SIMULACIÓN</span>
+                <span class="badge badge-danger" style="font-size:0.7rem; font-weight:800; background:#ec4899;">PRUEBAS EXCLUSIVAS DEL SUPERADMIN</span>
                 <h3 style="font-size:1.35rem; font-weight:900; color:#f3f4f6; margin:0.25rem 0 0 0; display:flex; align-items:center; gap:0.5rem;">
                   <i data-lucide="fast-forward" size="24" color="#8b5cf6"></i> Máquina del Tiempo / Control Temporal
                 </h3>
