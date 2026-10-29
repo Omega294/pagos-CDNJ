@@ -257,7 +257,7 @@ def get_student_timeline(conn, student_id):
     SELECT d.id, d.amount_usd, d.due_date, d.status, fc.name, fc.code
     FROM student_debts d
     JOIN fee_concepts fc ON d.fee_concept_id = fc.id
-    WHERE d.student_id = ?;
+    WHERE d.student_id = ? AND fc.code NOT LIKE '%2027-2028%' AND fc.code NOT LIKE '%2028%';
     """, (student_id,))
     rows = sort_debts_by_hierarchy(c.fetchall())
 
@@ -1003,7 +1003,6 @@ def init_db():
     # Auto-generate current month's tuition debts for all active students (Sep - Jul)
     try:
         generate_monthly_tuition_debts(conn)
-        generate_enrollment_debts(conn, "2027-2028", 120.0)
     except Exception as err:
         print("⚠️ Error en auto-generación de mensualidades/matrícula:", err)
 
@@ -1318,7 +1317,8 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             SELECT d.id, d.amount_usd, d.due_date, d.status, fc.name, fc.code
             FROM student_debts d
             JOIN fee_concepts fc ON d.fee_concept_id = fc.id
-            WHERE d.student_id = ? AND d.status IN ('PENDING', 'PARTIAL');
+            WHERE d.student_id = ? AND d.status IN ('PENDING', 'PARTIAL')
+              AND fc.code NOT LIKE '%2027-2028%' AND fc.code NOT LIKE '%2028%';
             """, (student_id,))
             rows = sort_debts_by_hierarchy(c.fetchall())
             debts = [{
@@ -1388,7 +1388,8 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 SELECT d.id, d.amount_usd, d.due_date, d.status, fc.name, fc.code
                 FROM student_debts d
                 JOIN fee_concepts fc ON d.fee_concept_id = fc.id
-                WHERE d.student_id = ? AND d.status IN ('PENDING', 'PARTIAL');
+                WHERE d.student_id = ? AND d.status IN ('PENDING', 'PARTIAL')
+                  AND fc.code NOT LIKE '%2027-2028%' AND fc.code NOT LIKE '%2028%';
                 """, (sid,))
                 debt_rows = sort_debts_by_hierarchy(c.fetchall())
                 debts = [{
@@ -1484,14 +1485,12 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             aug_row = c.fetchone()
             exclude_august = (aug_row and aug_row[0] == '1')
 
-            # Build full school year sequence
+            # Build full school year sequence (Septiembre a Julio - El último mes es Julio)
             school_year_sequence = []
             for m in range(9, 13):
                 school_year_sequence.append((start_year, m))
             for m in range(1, 8):
                 school_year_sequence.append((end_year, m))
-            if not exclude_august:
-                school_year_sequence.append((end_year, 8))
 
             # 4. Fetch existing debts for this student
             c.execute("""
