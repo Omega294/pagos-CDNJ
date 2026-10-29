@@ -1427,6 +1427,168 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "exchangeRate": CURRENT_EXCHANGE_RATE
             })
 
+        # Student Advance Tuition Options (Unbilled future months)
+        if path.startswith("/api/payments/students/") and path.endswith("/advance-options"):
+            user = self.get_auth_user()
+            if not self.check_perm(user, "payments:cashier:search"):
+                return self.send_json({"error": "Acceso Denegado"}, 403)
+
+            student_id = path.split("/")[4]
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+
+            # 1. Fetch student info
+            c.execute("""
+            SELECT id, student_code, first_name, last_name, grade,
+                   COALESCE(is_scholarship, 0), COALESCE(scholarship_pct, 0), COALESCE(scholarship_reason, '')
+            FROM students WHERE id = ?;
+            """, (student_id,))
+            st_row = c.fetchone()
+            if not st_row:
+                conn.close()
+                return self.send_json({"error": "Estudiante no encontrado"}, 404)
+
+            s_id, s_code, s_fname, s_lname, s_grade, s_isch, s_sch_pct, s_sch_reason = st_row
+            s_grade = s_grade or ""
+            s_sch_pct = float(s_sch_pct or 0.0)
+
+            # 2. Get tuition rates by grade
+            c.execute("SELECT grade_code, amount_usd FROM grade_tuition_rates;")
+            rate_rows = c.fetchall()
+            grade_rates = {r[0]: float(r[1]) for r in rate_rows}
+            base_rate = 80.0
+            for g_code, g_amt in grade_rates.items():
+                if g_code.lower() in s_grade.lower() or s_grade.lower().startswith(g_code.lower()):
+                    base_rate = g_amt
+                    break
+
+            monthly_fee = base_rate
+            if s_isch and s_sch_pct > 0:
+                monthly_fee = round(base_rate * (1.0 - (s_sch_pct / 100.0)), 2)
+
+            # 3. Determine school year
+            sys_date = get_current_system_date()
+            cur_year = sys_date.year
+            cur_month = sys_date.month
+            if cur_month >= 9:
+                start_year = cur_year
+                end_year = cur_year + 1
+            else:
+                start_year = cur_year - 1
+                end_year = cur_year
+
+            school_year = f"{start_year}-{end_year}"
+
+            # Check exclude august
+            c.execute("SELECT value_text FROM system_settings WHERE key_name = 'exclude_august';")
+            aug_row = c.fetchone()
+            exclude_august = (aug_row and aug_row[0] == '1')
+
+            # Build full school year sequence
+            school_year_sequence = []
+            for m in range(9, 13):
+                school_year_sequence.append((start_year, m))
+            for m in range(1, 8):
+                school_year_sequence.append((end_year, m))
+            if not exclude_august:
+                school_year_sequence.append((end_year, 8))
+
+            # 4. Fetch existing debts for this student
+            c.execute("""
+            SELECT d.id, d.amount_usd, d.due_date, d.status, fc.name, fc.code
+            FROM student_debts d
+            JOIN fee_concepts fc ON d.fee_concept_id = fc.id
+            WHERE d.student_id = ?;
+            """, (student_id,))
+            existing_debts = c.fetchall()
+
+            conn.close()
+
+            # Map existing debts by (year, month)
+            existing_by_period = {}
+            for ed in existing_debts:
+                d_id, amt, due, st, fc_name, fc_code = ed
+                p_year = None
+                p_month = None
+                if due and len(due) >= 7:
+                    try:
+                        p_year = int(due[:4])
+                        p_month = int(due[5:7])
+                    except:
+                        pass
+                if not p_year and fc_code and fc_code.startswith("MEN-"):
+                    parts = fc_code.split("-")
+                    if len(parts) >= 3:
+                        try:
+                            p_month = int(parts[1])
+                            p_year = int(parts[2]) if len(parts[2]) == 4 else int("20" + parts[2])
+                        except:
+                            pass
+                if p_year and p_month:
+                    existing_by_period[(p_year, p_month)] = {
+                        "debtId": d_id,
+                        "amountUSD": amt,
+                        "status": st,
+                        "dueDate": due,
+                        "conceptName": fc_name,
+                        "conceptCode": fc_code
+                    }
+
+            all_months = []
+            unbilled_months = []
+
+            for y, m in school_year_sequence:
+                m_name = MONTH_NAMES_ES.get(m, f"Mes {m}")
+                concept_code = f"MEN-{str(m).zfill(2)}-{y}"
+                concept_name = f"Mensualidad {m_name} {y}"
+                due_date = f"{y}-{str(m).zfill(2)}-01"
+
+                item = {
+                    "year": y,
+                    "month": m,
+                    "monthName": m_name,
+                    "conceptCode": concept_code,
+                    "conceptName": concept_name,
+                    "dueDate": due_date,
+                    "amountUSD": monthly_fee,
+                    "baseRateUSD": base_rate,
+                    "isScholarship": bool(s_isch),
+                    "scholarshipPct": s_sch_pct
+                }
+
+                if (y, m) in existing_by_period:
+                    ed = existing_by_period[(y, m)]
+                    item["isBilled"] = True
+                    item["debtId"] = ed["debtId"]
+                    item["status"] = ed["status"]
+                    item["billedAmountUSD"] = ed["amountUSD"]
+                else:
+                    item["isBilled"] = False
+                    item["debtId"] = None
+                    item["status"] = "UNBILLED"
+                    unbilled_months.append(item)
+
+                all_months.append(item)
+
+            return self.send_json({
+                "student": {
+                    "id": s_id,
+                    "studentCode": s_code,
+                    "fullName": f"{s_fname} {s_lname}".strip(),
+                    "firstName": s_fname,
+                    "lastName": s_lname,
+                    "grade": s_grade,
+                    "baseMonthlyUSD": base_rate,
+                    "finalMonthlyUSD": monthly_fee,
+                    "isScholarship": bool(s_isch),
+                    "scholarshipPct": s_sch_pct
+                },
+                "schoolYear": school_year,
+                "unbilledMonths": unbilled_months,
+                "allMonths": all_months,
+                "exchangeRate": CURRENT_EXCHANGE_RATE
+            })
+
         # Receipt Detail
         if path.startswith("/api/payments/receipts/"):
             user = self.get_auth_user()
@@ -2731,6 +2893,149 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "paperCheckRequired": paper_check_required,
                 "paperCurrentNumber": str(next_paper_curr)
             }, 201)
+
+        # Advance Tuition (Generate Future Monthly Debts for Student(s))
+        if path == "/api/payments/students/advance-tuition":
+            user = self.get_auth_user()
+            if not self.check_perm(user, "payments:cashier:create_payment") and not self.check_perm(user, "payments:cashier:search"):
+                return self.send_json({"error": "Acceso Denegado", "message": "Falta permiso de caja."}, 403)
+
+            student_ids = body.get("studentIds") or []
+            if not student_ids and body.get("studentId"):
+                student_ids = [body.get("studentId")]
+
+            months = body.get("months") or []
+            if not student_ids:
+                return self.send_json({"error": "Validación", "message": "Debe especificar al menos un estudiante."}, 400)
+            if not months:
+                return self.send_json({"error": "Validación", "message": "Debe seleccionar al menos un mes a adelantar."}, 400)
+
+            created_debts = []
+            skipped_count = 0
+
+            with PAYMENT_LOCK:
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+
+                c.execute("SELECT grade_code, amount_usd FROM grade_tuition_rates;")
+                grade_rates = {r[0]: float(r[1]) for r in c.fetchall()}
+                default_rate = 80.0
+
+                for sid in student_ids:
+                    c.execute("""
+                    SELECT id, first_name, last_name, grade,
+                           COALESCE(is_scholarship, 0), COALESCE(scholarship_pct, 0)
+                    FROM students WHERE id = ?;
+                    """, (sid,))
+                    st_row = c.fetchone()
+                    if not st_row:
+                        continue
+
+                    s_id, s_fname, s_lname, s_grade, s_isch, s_sch_pct = st_row
+                    s_grade = s_grade or ""
+                    s_sch_pct = float(s_sch_pct or 0.0)
+
+                    st_amount = default_rate
+                    for g_code, g_amt in grade_rates.items():
+                        if g_code.lower() in s_grade.lower() or s_grade.lower().startswith(g_code.lower()):
+                            st_amount = g_amt
+                            break
+
+                    if s_isch and s_sch_pct > 0:
+                        st_amount = round(st_amount * (1.0 - (s_sch_pct / 100.0)), 2)
+
+                    for m_info in months:
+                        m_year = int(m_info.get("year"))
+                        m_num = int(m_info.get("month"))
+                        month_name = MONTH_NAMES_ES.get(m_num, f"Mes {m_num}")
+                        concept_code = f"MEN-{str(m_num).zfill(2)}-{m_year}"
+                        concept_name = f"Mensualidad {month_name} {m_year}"
+                        due_date = f"{m_year}-{str(m_num).zfill(2)}-01"
+
+                        # 1. Ensure Fee Concept exists
+                        c.execute("SELECT id FROM fee_concepts WHERE code = ?;", (concept_code,))
+                        fc_row = c.fetchone()
+                        if fc_row:
+                            fc_id = fc_row[0]
+                        else:
+                            fc_id = f"fc_men_{m_year}_{str(m_num).zfill(2)}"
+                            c.execute("""
+                            INSERT INTO fee_concepts (id, code, name, amount_usd, is_recurring, is_active)
+                            VALUES (?, ?, ?, ?, 1, 1)
+                            ON CONFLICT(code) DO NOTHING;
+                            """, (fc_id, concept_code, concept_name, st_amount))
+
+                        # 2. Check if student already has this debt (avoid duplicate)
+                        c.execute("""
+                        SELECT id FROM student_debts
+                        WHERE student_id = ? AND (fee_concept_id = ? OR due_date = ?);
+                        """, (sid, fc_id, due_date))
+                        existing_d = c.fetchone()
+                        if existing_d:
+                            skipped_count += 1
+                            continue
+
+                        # 3. Insert student_debts record with status 'PENDING'
+                        debt_id = f"sd_adv_{m_num}_{sid}_{int(time.time()*1000)}"
+                        c.execute("""
+                        INSERT INTO student_debts (id, student_id, fee_concept_id, amount_usd, due_date, status)
+                        VALUES (?, ?, ?, ?, ?, 'PENDING');
+                        """, (debt_id, sid, fc_id, st_amount, due_date))
+
+                        created_debts.append({
+                            "id": debt_id,
+                            "studentId": sid,
+                            "studentName": f"{s_fname} {s_lname}".strip(),
+                            "conceptName": concept_name,
+                            "conceptCode": concept_code,
+                            "dueDate": due_date,
+                            "amountUSD": st_amount
+                        })
+
+                conn.commit()
+                conn.close()
+
+            return self.send_json({
+                "success": True,
+                "createdCount": len(created_debts),
+                "skippedCount": skipped_count,
+                "createdDebts": created_debts,
+                "message": f"Se han generado exitosamente {len(created_debts)} mensualidades por adelantado."
+            }, 201)
+
+        # Delete Unpaid Pending Debt (e.g. if cashier added an advance by mistake)
+        if path == "/api/payments/debts/delete-unpaid":
+            user = self.get_auth_user()
+            if not self.check_perm(user, "payments:cashier:create_payment") and not self.check_perm(user, "payments:cashier:search"):
+                return self.send_json({"error": "Acceso Denegado"}, 403)
+
+            debt_id = body.get("debtId")
+            if not debt_id:
+                return self.send_json({"error": "Validación", "message": "ID de deuda requerido."}, 400)
+
+            with PAYMENT_LOCK:
+                conn = sqlite3.connect(DB_FILE)
+                c = conn.cursor()
+                c.execute("SELECT status FROM student_debts WHERE id = ?;", (debt_id,))
+                d_row = c.fetchone()
+                if not d_row:
+                    conn.close()
+                    return self.send_json({"error": "No encontrada", "message": "Deuda no encontrada."}, 404)
+
+                if d_row[0] != 'PENDING':
+                    conn.close()
+                    return self.send_json({"error": "Operación Denegada", "message": "No se puede eliminar una deuda que ya tiene pagos o abonos."}, 400)
+
+                c.execute("SELECT COUNT(*) FROM payment_details WHERE debt_id = ?;", (debt_id,))
+                if c.fetchone()[0] > 0:
+                    conn.close()
+                    return self.send_json({"error": "Operación Denegada", "message": "La deuda ya posee detalles de pago vinculados."}, 400)
+
+                c.execute("DELETE FROM student_debts WHERE id = ?;", (debt_id,))
+                conn.commit()
+                conn.close()
+
+            return self.send_json({"success": True, "message": "Mensualidad pendiente removida exitosamente."})
 
         # Create New User (Superadmin Only)
         if path == "/api/admin/users":

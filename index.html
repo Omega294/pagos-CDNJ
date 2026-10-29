@@ -183,6 +183,13 @@
       dashboardData: null,
       dashboardLoading: false,
       activeReceiptModalId: null,
+      showAdvanceModal: false,
+      advanceModalStudentId: null,
+      advanceOptionsData: null,
+      advanceSelectedMonths: [],
+      advanceApplyToAllSiblings: false,
+      advanceModalLoading: false,
+      advanceModalError: null,
       showVoidModal: null,
       voidReason: '',
       showClosingModal: false,
@@ -436,6 +443,7 @@
           ${state.showTimeMachineModal ? renderTimeMachineModalHTML() : ''}
           ${state.showPaperCheckModal ? renderPaperCheckModalHTML() : ''}
           ${state.showPaperBatchModal ? renderPaperBatchModalHTML() : ''}
+          ${state.showAdvanceModal ? renderAdvanceModalHTML() : ''}
         `;
 
         try { if (typeof lucide !== 'undefined' && lucide && lucide.createIcons) lucide.createIcons(); } catch(e) {}
@@ -740,6 +748,10 @@
                                 ` : `
                                   <span class="badge badge-success" style="font-size:0.65rem;">Al día</span>
                                 `}
+                                <br>
+                                <button type="button" onclick="event.stopPropagation(); openAdvancePaymentModal('${st.id}')" class="btn btn-sm" style="font-size:0.65rem; padding:0.15rem 0.45rem; margin-top:0.25rem; background:rgba(245, 158, 11, 0.15); border:1px solid rgba(245, 158, 11, 0.4); color:#fbbf24; font-weight:700; border-radius:4px; cursor:pointer;" title="Adelantar mensualidades para este representado">
+                                  ⏩ Adelantar
+                                </button>
                               </div>
                             </div>
                             ${renderStudentTimelineHTML(st.timeline)}
@@ -772,9 +784,14 @@
                         <h4 style="color:#818cf8; font-size:0.95rem; font-weight:700; display:flex; align-items:center; gap:0.4rem; text-transform:uppercase; letter-spacing:0.05em;">
                           <i data-lucide="graduation-cap"></i> Estudiante (Representado)
                         </h4>
-                        <span class="badge badge-primary" style="font-size:0.75rem; padding:0.25rem 0.65rem;">
-                          ${state.familyData.students[0]?.studentCode || 'S/D'}
-                        </span>
+                        <div style="display:flex; align-items:center; gap:0.4rem;">
+                          <button type="button" onclick="openAdvancePaymentModal('${state.familyData.students[0]?.id}')" class="btn btn-sm" style="font-size:0.7rem; padding:0.2rem 0.55rem; background:rgba(245, 158, 11, 0.15); border:1px solid rgba(245, 158, 11, 0.4); color:#fbbf24; font-weight:700; border-radius:6px; cursor:pointer;" title="Adelantar mensualidades futuras">
+                            ⏩ Adelantar Meses
+                          </button>
+                          <span class="badge badge-primary" style="font-size:0.75rem; padding:0.25rem 0.65rem;">
+                            ${state.familyData.students[0]?.studentCode || 'S/D'}
+                          </span>
+                        </div>
                       </div>
 
                       <div style="font-size:0.875rem; display:flex; flex-direction:column; gap:0.4rem;">
@@ -825,11 +842,21 @@
             ${!state.familyData ? `
               <div style="text-align:center; padding:3rem; color:#9ca3af;">Selecciona un alumno o representante para iniciar el cobro.</div>
             ` : state.debts.length === 0 ? `
-              <div style="text-align:center; padding:3rem; color:#34d399;">No hay deudas pendientes registradas.</div>
+              <div style="text-align:center; padding:2.5rem 1.5rem; background:rgba(16,185,129,0.05); border:1px dashed rgba(16,185,129,0.3); border-radius:12px; margin-bottom:1rem;">
+                <div style="font-size:2.2rem; margin-bottom:0.5rem;">🎉</div>
+                <div style="font-weight:700; font-size:1.05rem; color:#34d399;">No hay deudas pendientes registradas</div>
+                <p style="color:#9ca3af; font-size:0.85rem; margin:0.4rem 0 1.25rem 0;">El alumno/familia se encuentra al día con todas las mensualidades y conceptos facturados a la fecha.</p>
+                <button type="button" onclick="openAdvancePaymentModal()" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:0.5rem; font-weight:800; padding:0.65rem 1.4rem; font-size:0.9rem; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; border-radius:8px; box-shadow:0 4px 15px rgba(245,158,11,0.35); cursor:pointer;">
+                  <i data-lucide="calendar-plus"></i> ➕ Adelantar Meses Futuros
+                </button>
+              </div>
             ` : `
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.4rem;">
                 <span style="font-size:0.8rem; font-weight:700; color:#9ca3af; text-transform:uppercase;">1. Conceptos a Cancelar:</span>
-                <div style="display:flex; gap:0.3rem;">
+                <div style="display:flex; gap:0.35rem; align-items:center;">
+                  <button type="button" onclick="openAdvancePaymentModal()" class="btn btn-sm" style="font-size:0.75rem; padding:0.25rem 0.65rem; background:rgba(245, 158, 11, 0.15); border:1px solid #f59e0b; color:#fbbf24; font-weight:700; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:0.3rem;" title="Cargar y cobrar mensualidades que aún no han sido facturadas">
+                    <i data-lucide="calendar-plus" style="width:14px; height:14px;"></i> ➕ Adelantar Meses
+                  </button>
                   <button type="button" onclick="selectAllDebts(true)" class="btn btn-sm btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;">☑️ Todos</button>
                   <button type="button" onclick="selectAllDebts(false)" class="btn btn-sm btn-secondary" style="font-size:0.7rem; padding:0.2rem 0.5rem;">☐ Ninguno</button>
                 </div>
@@ -855,10 +882,18 @@
                         ${isNextYearMat ? '<span class="badge badge-info" style="margin-left:0.4rem; font-size:0.65rem;">🎓 Inscripción Período Siguiente</span>' : ''}
                         ${!isMat && idx === 0 ? '<span class="badge badge-success" style="margin-left:0.4rem; font-size:0.65rem;">1ª Deuda (Prioritaria FIFO)</span>' : ''}
                         ${d.status==='PARTIAL'?'<span class="badge badge-warning" style="margin-left:0.4rem; font-size:0.65rem;">Saldo Parcial</span>':''}
+                        ${d.id.startsWith('sd_adv_') ? '<span class="badge" style="background:rgba(245,158,11,0.2); color:#fbbf24; border:1px solid rgba(245,158,11,0.5); margin-left:0.4rem; font-size:0.65rem;">⏩ Adelanto</span>' : ''}
                         <br><span style="font-size:0.75rem; color:#9ca3af;">Vence: ${d.dueDate}</span>
                       </div>
                     </div>
-                    <strong style="color:#34d399;">$${d.amountUSD.toFixed(2)} USD</strong>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                      <strong style="color:#34d399;">$${d.amountUSD.toFixed(2)} USD</strong>
+                      ${d.id.startsWith('sd_adv_') && d.status === 'PENDING' ? `
+                        <button type="button" onclick="event.stopPropagation(); deleteUnpaidDebt('${d.id}')" class="btn btn-sm" style="padding:0.2rem 0.4rem; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:4px; cursor:pointer;" title="Eliminar cuota adelantada de caja">
+                          ✕
+                        </button>
+                      ` : ''}
+                    </div>
                   </label>
                 `;}).join('')}
               </div>
@@ -2326,6 +2361,366 @@
       } catch (err) {
         console.error('Error confirming closing:', err);
         alert('Error al enviar el registro de cierre al servidor.');
+      }
+    }
+
+    // =========================================================================
+    // MODAL DE ADELANTO DE MENSUALIDADES FUTURAS (ALTERNATIVA 1)
+    // =========================================================================
+    function renderAdvanceModalHTML() {
+      if (!state.showAdvanceModal) return '';
+
+      const data = state.advanceOptionsData;
+      const loading = state.advanceModalLoading;
+      const error = state.advanceModalError;
+
+      return `
+        <div class="modal-overlay" onclick="closeAdvancePaymentModal()">
+          <div class="modal-content" style="max-width:750px; width:95%;" onclick="event.stopPropagation();">
+            
+            <!-- Modal Header -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:0.75rem;">
+              <div style="display:flex; align-items:center; gap:0.6rem;">
+                <div style="background:rgba(245, 158, 11, 0.2); border:1px solid rgba(245, 158, 11, 0.5); width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fbbf24; font-size:1.25rem;">
+                  ⏩
+                </div>
+                <div>
+                  <h3 style="font-size:1.15rem; color:#f3f4f6; font-weight:800; margin:0;">Adelantar Pago de Mensualidades</h3>
+                  <div style="font-size:0.75rem; color:#9ca3af;">Facturación y precarga anticipada de meses futuros no emitidos</div>
+                </div>
+              </div>
+              <button onclick="closeAdvancePaymentModal()" class="btn btn-secondary btn-sm" style="font-size:1rem; padding:0.25rem 0.6rem;">✕</button>
+            </div>
+
+            ${loading ? `
+              <div style="text-align:center; padding:3rem 1rem;">
+                <div class="spinner" style="margin:0 auto 1rem auto; width:36px; height:36px; border:3px solid rgba(245,158,11,0.2); border-top-color:#fbbf24; border-radius:50%; animation:spin 1s linear infinite;"></div>
+                <div style="color:#fbbf24; font-weight:700; font-size:0.95rem;">Consultando calendario y mensualidades disponibles...</div>
+                <div style="color:#9ca3af; font-size:0.8rem; margin-top:0.3rem;">Verificando meses no facturados del año escolar</div>
+              </div>
+            ` : error ? `
+              <div style="background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); border-radius:10px; padding:1.25rem; text-align:center; margin-bottom:1rem;">
+                <div style="color:#f87171; font-weight:700; margin-bottom:0.5rem;">⚠️ No se pudieron cargar las opciones</div>
+                <div style="color:#d1d5db; font-size:0.85rem;">${error}</div>
+                <button onclick="openAdvancePaymentModal('${state.advanceModalStudentId}')" class="btn btn-secondary btn-sm" style="margin-top:0.75rem;">Reintentar</button>
+              </div>
+            ` : data ? `
+              <!-- Ficha del Estudiante -->
+              <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:0.85rem 1rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                  <div style="font-size:0.75rem; color:#9ca3af; text-transform:uppercase; font-weight:700;">Estudiante a Facturar:</div>
+                  <strong style="font-size:1.05rem; color:#f3f4f6;">${data.student.fullName}</strong>
+                  <span style="font-size:0.8rem; color:#818cf8; margin-left:0.4rem;">(${data.student.grade} - ${data.student.studentCode})</span>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:0.75rem; color:#9ca3af; text-transform:uppercase; font-weight:700;">Cuota Mensual:</div>
+                  <strong style="font-size:1.05rem; color:#34d399;">$${data.student.finalMonthlyUSD.toFixed(2)} USD</strong>
+                  ${data.student.isScholarship && data.student.scholarshipPct > 0 ? `
+                    <span class="badge" style="background:rgba(168,85,247,0.25); color:#c084fc; border:1px solid #c084fc; font-size:0.65rem; margin-left:0.3rem;">Beca ${data.student.scholarshipPct}%</span>
+                  ` : ''}
+                </div>
+              </div>
+
+              <!-- Selector de Representados / Hermanos (si hay más de 1 en la familia) -->
+              ${state.familyData?.students && state.familyData.students.length > 1 ? `
+                <div style="background:rgba(99, 102, 241, 0.08); border:1px solid rgba(99, 102, 241, 0.25); border-radius:10px; padding:0.75rem 1rem; margin-bottom:1rem;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.3rem;">
+                    <span style="font-size:0.75rem; font-weight:700; color:#818cf8; text-transform:uppercase;">Cambiar Representado:</span>
+                    <label style="font-size:0.8rem; font-weight:700; color:#fbbf24; cursor:pointer; display:flex; align-items:center; gap:0.4rem;">
+                      <input type="checkbox" ${state.advanceApplyToAllSiblings ? 'checked' : ''} onchange="state.advanceApplyToAllSiblings = this.checked; render();" style="accent-color:#f59e0b;">
+                      👨‍👩‍👧‍👦 Aplicar mismos meses a todos los hermanos (${state.familyData.students.length} estudiantes)
+                    </label>
+                  </div>
+                  <div style="display:flex; gap:0.4rem; overflow-x:auto; padding-bottom:0.25rem;">
+                    ${state.familyData.students.map(st => `
+                      <button type="button" onclick="switchAdvanceStudent('${st.id}')" class="btn btn-sm ${st.id === state.advanceModalStudentId ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.75rem; padding:0.3rem 0.6rem; white-space:nowrap;">
+                        🎓 ${st.firstName} (${st.grade})
+                      </button>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
+              <!-- Botones de Selección Rápida -->
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.4rem;">
+                <span style="font-size:0.8rem; font-weight:700; color:#9ca3af; text-transform:uppercase;">Selecciona los meses a adelantar (Año ${data.schoolYear}):</span>
+                <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                  <button type="button" onclick="selectAdvancePreset('next')" class="btn btn-sm btn-secondary" style="font-size:0.72rem; padding:0.2rem 0.55rem;">+1 Mes Próximo</button>
+                  <button type="button" onclick="selectAdvancePreset('3months')" class="btn btn-sm btn-secondary" style="font-size:0.72rem; padding:0.2rem 0.55rem;">+3 Meses</button>
+                  <button type="button" onclick="selectAdvancePreset('all')" class="btn btn-sm btn-secondary" style="font-size:0.72rem; padding:0.2rem 0.55rem;">Resto del Año</button>
+                  <button type="button" onclick="selectAdvancePreset('none')" class="btn btn-sm btn-secondary" style="font-size:0.72rem; padding:0.2rem 0.55rem; color:#9ca3af;">Deseleccionar</button>
+                </div>
+              </div>
+
+              <!-- Lista de Meses Futuros Disponibles -->
+              ${data.unbilledMonths && data.unbilledMonths.length > 0 ? `
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap:0.6rem; max-height:240px; overflow-y:auto; padding-right:0.3rem; margin-bottom:1rem;">
+                  ${data.unbilledMonths.map(m => {
+                    const key = `${m.year}-${m.month}`;
+                    const isSelected = state.advanceSelectedMonths.includes(key);
+                    return `
+                      <div onclick="toggleAdvanceMonth('${key}')" style="background:${isSelected ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.02)'}; border:2px solid ${isSelected ? '#f59e0b' : 'rgba(255,255,255,0.08)'}; border-radius:8px; padding:0.65rem 0.8rem; cursor:pointer; transition:all 0.15s ease; display:flex; align-items:center; gap:0.6rem;">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleAdvanceMonth('${key}')" style="accent-color:#f59e0b; width:16px; height:16px; cursor:pointer;">
+                        <div style="flex:1;">
+                          <div style="font-weight:700; color:${isSelected ? '#fbbf24' : '#f3f4f6'}; font-size:0.875rem;">${m.monthName} ${m.year}</div>
+                          <div style="font-size:0.72rem; color:#9ca3af;">Vence: ${m.dueDate}</div>
+                        </div>
+                        <div style="text-align:right;">
+                          <strong style="color:#34d399; font-size:0.85rem;">$${m.amountUSD.toFixed(2)}</strong>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              ` : `
+                <div style="text-align:center; padding:2rem 1rem; background:rgba(16,185,129,0.05); border:1px dashed rgba(16,185,129,0.3); border-radius:10px; margin-bottom:1rem;">
+                  <div style="font-size:1.8rem; margin-bottom:0.4rem;">🎓</div>
+                  <strong style="color:#34d399; font-size:0.95rem;">Todos los meses del año escolar ${data.schoolYear} ya están facturados o cancelados.</strong>
+                  <p style="color:#9ca3af; font-size:0.8rem; margin:0.3rem 0 0 0;">No hay meses futuros pendientes por programar en este período.</p>
+                </div>
+              `}
+
+              <!-- Resumen de Totales -->
+              ${(() => {
+                const countMonths = state.advanceSelectedMonths.length;
+                const studentMultiplier = (state.advanceApplyToAllSiblings && state.familyData?.students) ? state.familyData.students.length : 1;
+                const totalDebts = countMonths * studentMultiplier;
+                const feePerMonth = data.student.finalMonthlyUSD;
+                const totalUSD = countMonths * feePerMonth * studentMultiplier;
+                const totalVES = totalUSD * state.exchangeRate;
+
+                return `
+                  <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:0.85rem 1rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                    <div>
+                      <div style="font-size:0.75rem; color:#9ca3af; text-transform:uppercase; font-weight:700;">Resumen del Adelanto:</div>
+                      <div style="font-size:0.9rem; color:#f3f4f6;">
+                        <strong>${countMonths} mes(es)</strong> seleccionado(s)
+                        ${studentMultiplier > 1 ? `<span style="color:#818cf8; font-weight:700;"> x ${studentMultiplier} representados = ${totalDebts} cuotas</span>` : ''}
+                      </div>
+                    </div>
+                    <div style="text-align:right;">
+                      <div style="font-size:0.75rem; color:#9ca3af; text-transform:uppercase; font-weight:700;">Monto Total a Añadir a Caja:</div>
+                      <div style="display:flex; align-items:baseline; justify-content:flex-end; gap:0.5rem;">
+                        <strong style="font-size:1.3rem; color:#fbbf24;">$${totalUSD.toFixed(2)} USD</strong>
+                        <span style="font-size:0.85rem; color:#9ca3af;">(~Bs. ${totalVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})})</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Botones de Acción -->
+                  <div style="display:flex; justify-content:flex-end; gap:0.6rem;">
+                    <button type="button" onclick="closeAdvancePaymentModal()" class="btn btn-secondary" style="padding:0.65rem 1.25rem;">
+                      Cancelar
+                    </button>
+                    <button type="button" onclick="submitAdvanceTuition()" class="btn btn-primary" ${countMonths === 0 ? 'disabled' : ''} style="display:inline-flex; align-items:center; gap:0.5rem; background:linear-gradient(135deg, #f59e0b, #d97706); border:none; padding:0.65rem 1.5rem; font-weight:800; font-size:0.95rem; opacity:${countMonths === 0 ? '0.5' : '1'}; cursor:${countMonths === 0 ? 'not-allowed' : 'pointer'}; box-shadow:0 4px 15px rgba(245, 158, 11, 0.35);">
+                      <i data-lucide="check-circle-2"></i> ➕ Confirmar e Incluir en Caja (${totalDebts})
+                    </button>
+                  </div>
+                `;
+              })()}
+            ` : ''}
+
+          </div>
+        </div>
+      `;
+    }
+
+    async function openAdvancePaymentModal(studentId = null) {
+      let targetId = studentId;
+      if (!targetId && state.selectedStudent) {
+        targetId = state.selectedStudent.id;
+      } else if (!targetId && state.familyData?.students && state.familyData.students.length > 0) {
+        targetId = state.familyData.students[0].id;
+      }
+
+      if (!targetId) {
+        alert("⚠️ Por favor selecciona primero un alumno o representante para consultar las mensualidades a adelantar.");
+        return;
+      }
+
+      state.showAdvanceModal = true;
+      state.advanceModalStudentId = targetId;
+      state.advanceModalLoading = true;
+      state.advanceModalError = null;
+      state.advanceSelectedMonths = [];
+      state.advanceApplyToAllSiblings = false;
+      render();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/payments/students/${targetId}/advance-options`, {
+          headers: { Authorization: `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.advanceOptionsData = data;
+          state.advanceModalLoading = false;
+          // Pre-seleccionar automáticamente el próximo mes no facturado si existe
+          if (data.unbilledMonths && data.unbilledMonths.length > 0) {
+            state.advanceSelectedMonths = [`${data.unbilledMonths[0].year}-${data.unbilledMonths[0].month}`];
+          }
+          render();
+        } else {
+          state.advanceModalLoading = false;
+          state.advanceModalError = data.message || "Error al cargar las opciones de mensualidades.";
+          render();
+        }
+      } catch (err) {
+        state.advanceModalLoading = false;
+        state.advanceModalError = err.message || "Error de conexión con el servidor.";
+        render();
+      }
+    }
+
+    function closeAdvancePaymentModal() {
+      state.showAdvanceModal = false;
+      state.advanceOptionsData = null;
+      state.advanceModalLoading = false;
+      state.advanceModalError = null;
+      state.advanceSelectedMonths = [];
+      state.advanceApplyToAllSiblings = false;
+      render();
+    }
+
+    async function switchAdvanceStudent(studentId) {
+      if (state.advanceModalStudentId === studentId) return;
+      state.advanceModalStudentId = studentId;
+      state.advanceModalLoading = true;
+      state.advanceModalError = null;
+      state.advanceSelectedMonths = [];
+      render();
+
+      try {
+        const res = await fetch(`${API_BASE}/api/payments/students/${studentId}/advance-options`, {
+          headers: { Authorization: `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.advanceOptionsData = data;
+          state.advanceModalLoading = false;
+          if (data.unbilledMonths && data.unbilledMonths.length > 0) {
+            state.advanceSelectedMonths = [`${data.unbilledMonths[0].year}-${data.unbilledMonths[0].month}`];
+          }
+          render();
+        } else {
+          state.advanceModalLoading = false;
+          state.advanceModalError = data.message || "Error al cargar las opciones.";
+          render();
+        }
+      } catch (err) {
+        state.advanceModalLoading = false;
+        state.advanceModalError = err.message || "Error de conexión.";
+        render();
+      }
+    }
+
+    function toggleAdvanceMonth(monthKey) {
+      const idx = state.advanceSelectedMonths.indexOf(monthKey);
+      if (idx >= 0) {
+        state.advanceSelectedMonths.splice(idx, 1);
+      } else {
+        state.advanceSelectedMonths.push(monthKey);
+      }
+      render();
+    }
+
+    function selectAdvancePreset(type) {
+      if (!state.advanceOptionsData || !state.advanceOptionsData.unbilledMonths) return;
+      const unbilled = state.advanceOptionsData.unbilledMonths;
+
+      if (type === 'next') {
+        state.advanceSelectedMonths = unbilled.length > 0 ? [`${unbilled[0].year}-${unbilled[0].month}`] : [];
+      } else if (type === '3months') {
+        state.advanceSelectedMonths = unbilled.slice(0, 3).map(m => `${m.year}-${m.month}`);
+      } else if (type === 'all') {
+        state.advanceSelectedMonths = unbilled.map(m => `${m.year}-${m.month}`);
+      } else if (type === 'none') {
+        state.advanceSelectedMonths = [];
+      }
+      render();
+    }
+
+    async function submitAdvanceTuition() {
+      if (!state.advanceSelectedMonths || state.advanceSelectedMonths.length === 0) {
+        alert("⚠️ Por favor selecciona al menos un mes a adelantar.");
+        return;
+      }
+
+      const months = state.advanceSelectedMonths.map(k => {
+        const parts = k.split('-');
+        return { year: parseInt(parts[0]), month: parseInt(parts[1]) };
+      });
+
+      let studentIds = [state.advanceModalStudentId];
+      if (state.advanceApplyToAllSiblings && state.familyData?.students && state.familyData.students.length > 1) {
+        studentIds = state.familyData.students.map(s => s.id);
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/payments/students/advance-tuition`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${state.token}`
+          },
+          body: JSON.stringify({ studentIds, months })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const createdDebts = data.createdDebts || [];
+          closeAdvancePaymentModal();
+
+          // Recargar deudas en caja
+          const currentStudentId = state.selectedStudent ? state.selectedStudent.id : null;
+          const rootStudentId = state.familyData?.students?.[0]?.id || state.advanceModalStudentId;
+
+          await selectStudent(rootStudentId, currentStudentId);
+
+          // Auto-seleccionar las deudas recién adelantadas
+          const newDebtIds = createdDebts.map(d => d.id);
+          state.selectedDebtIds = Array.from(new Set([...state.selectedDebtIds, ...newDebtIds]));
+
+          alert(`✅ ${data.message || 'Mensualidades generadas exitosamente.'}\nSe han incluido en la lista de cobro actual.`);
+          render();
+        } else {
+          alert(`⚠️ ${data.message || 'Error al generar mensualidades por adelantado.'}`);
+        }
+      } catch (err) {
+        alert(`⚠️ Error de red al comunicarse con el servidor: ${err.message}`);
+      }
+    }
+
+    async function deleteUnpaidDebt(debtId) {
+      if (!confirm("¿Estás seguro de eliminar esta cuota adelantada no pagada de la lista de cobro?")) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/payments/debts/delete-unpaid`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${state.token}`
+          },
+          body: JSON.stringify({ debtId })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.selectedDebtIds = state.selectedDebtIds.filter(id => id !== debtId);
+          state.debts = state.debts.filter(d => d.id !== debtId);
+          if (state.allFamilyDebts) {
+            state.allFamilyDebts = state.allFamilyDebts.filter(d => d.id !== debtId);
+          }
+          if (state.familyData?.students?.[0]?.id) {
+            const currentStudentId = state.selectedStudent ? state.selectedStudent.id : null;
+            await selectStudent(state.familyData.students[0].id, currentStudentId);
+          } else {
+            render();
+          }
+        } else {
+          alert(`⚠️ ${data.message || 'No se pudo eliminar la cuota.'}`);
+        }
+      } catch (err) {
+        alert(`⚠️ Error: ${err.message}`);
       }
     }
 
