@@ -337,12 +337,158 @@ def check_and_run_scheduled_backups():
         print(f"⏰ Ejecutando respaldo automático de base de datos ({reason})...")
         create_database_backup(reason=reason)
 
+def check_and_auto_generate_monthly_tuition():
+    """
+    Verifica periódicamente si ha iniciado un nuevo mes escolar (del 1 al 12, excluyendo Agosto)
+    y genera automáticamente las mensualidades correspondientes para todos los estudiantes activos.
+    """
+    try:
+        sys_date = get_current_system_date()
+        target_year = sys_date.year
+        target_month = sys_date.month
+
+        # Agosto es receso escolar (vacaciones)
+        if target_month == 8:
+            return
+
+        conn = get_db_connection()
+        c = conn.cursor()
+
+        concept_code = f"MEN-{str(target_month).zfill(2)}-{target_year}"
+        c.execute("""
+        SELECT COUNT(*)
+        FROM student_debts d
+        JOIN fee_concepts fc ON d.fee_concept_id = fc.id
+        WHERE fc.code = ?;
+        """, (concept_code,))
+        billed_count = c.fetchone()[0]
+
+        c.execute("SELECT COUNT(*) FROM students WHERE COALESCE(status, 'ACTIVE') = 'ACTIVE';")
+        active_count = c.fetchone()[0]
+
+        # Si faltan estudiantes activos por facturar en este mes
+        if billed_count < active_count and active_count > 0:
+            generate_monthly_tuition_debts(conn, target_year=target_year, target_month=target_month)
+        conn.close()
+    except Exception as e:
+        print("⚠️ Error en auto-generación periódica de mensualidades:", e)
+
+def assign_school_year_debts_to_student(cursor, student_id, grade, is_sch=0, sch_pct=0.0):
+    """
+    Asigna automáticamente las deudas del año escolar a un estudiante importado:
+    1. Matrícula o Inscripción del año escolar vigente (ej. MAT-2026-2027).
+    2. Mensualidades acumuladas desde el inicio de clases (Septiembre) hasta el mes actual
+       (ej. Septiembre y Octubre si se importa en Octubre), con arancel según grado y beca.
+    """
+    sys_date = get_current_system_date()
+    cur_year = sys_date.year
+    cur_month = sys_date.month
+
+    # Determinar año escolar (en Venezuela inicia en Septiembre)
+    if cur_month >= 9:
+        start_year = cur_year
+        end_year = cur_year + 1
+    else:
+        start_year = cur_year - 1
+        end_year = cur_year
+
+    school_year = f"{start_year}-{end_year}"
+
+    # 1. MATRÍCULA / INSCRIPCIÓN
+    cursor.execute("""
+    SELECT id, amount_usd FROM fee_concepts 
+    WHERE code = ? OR code = ? OR code LIKE ?
+    LIMIT 1;
+    """, (f"MAT-{school_year}", f"MAT-{start_year}", f"MAT-%{start_year}%"))
+    mat_row = cursor.fetchone()
+    if mat_row:
+        mat_concept_id = mat_row[0]
+        mat_base_amt = float(mat_row[1])
+    else:
+        mat_concept_id = f"fc_mat_{school_year.replace('-', '_')}"
+        mat_base_amt = 120.0
+        cursor.execute("""
+        INSERT INTO fee_concepts (id, code, name, amount_usd, is_recurring, is_active)
+        VALUES (?, ?, ?, ?, 0, 1)
+        ON CONFLICT(code) DO NOTHING;
+        """, (mat_concept_id, f"MAT-{school_year}", f"Matrícula / Inscripción Año Escolar {school_year}", mat_base_amt))
+
+    # Asignar Matrícula si no la tiene
+    cursor.execute("SELECT COUNT(*) FROM student_debts WHERE student_id = ? AND fee_concept_id = ?;", (student_id, mat_concept_id))
+    if cursor.fetchone()[0] == 0:
+        mat_amt = mat_base_amt
+        if is_sch and sch_pct > 0:
+            mat_amt = round(mat_base_amt * (1.0 - (sch_pct / 100.0)), 2)
+        mat_debt_id = f"sd_mat_{student_id}_{int(time.time()*1000)}"
+        cursor.execute("""
+        INSERT INTO student_debts (id, student_id, fee_concept_id, amount_usd, due_date, status)
+        VALUES (?, ?, ?, ?, ?, 'PENDING');
+        """, (mat_debt_id, student_id, mat_concept_id, mat_amt, f"{start_year}-09-15"))
+
+    # 2. TARIFAS POR GRADO
+    cursor.execute("SELECT grade_code, amount_usd FROM grade_tuition_rates;")
+    rate_rows = cursor.fetchall()
+    grade_rates = {r[0]: float(r[1]) for r in rate_rows}
+    default_rate = 80.0
+    grade_amt = default_rate
+    for g_code, g_amt in grade_rates.items():
+        if g_code.lower() in (grade or "").lower() or (grade or "").lower().startswith(g_code.lower()):
+            grade_amt = g_amt
+            break
+
+    # 3. MENSUALIDADES ACUMULADAS (Desde Septiembre hasta el mes actual)
+    months_to_bill = []
+    if cur_month >= 9:
+        for m in range(9, cur_month + 1):
+            if m != 8:
+                months_to_bill.append((start_year, m))
+    else:
+        for m in range(9, 13):
+            months_to_bill.append((start_year, m))
+        for m in range(1, cur_month + 1):
+            if m != 8:
+                months_to_bill.append((end_year, m))
+
+    for m_year, m_num in months_to_bill:
+        month_name = MONTH_NAMES_ES.get(m_num, f"Mes {m_num}")
+        concept_code = f"MEN-{str(m_num).zfill(2)}-{m_year}"
+        concept_name = f"Mensualidad {month_name} {m_year}"
+        due_date = f"{m_year}-{str(m_num).zfill(2)}-01"
+
+        cursor.execute("SELECT id FROM fee_concepts WHERE code = ?;", (concept_code,))
+        fc_row = cursor.fetchone()
+        if fc_row:
+            fc_id = fc_row[0]
+        else:
+            fc_id = f"fc_men_{m_year}_{str(m_num).zfill(2)}"
+            cursor.execute("""
+            INSERT INTO fee_concepts (id, code, name, amount_usd, is_recurring, is_active)
+            VALUES (?, ?, ?, ?, 1, 1)
+            ON CONFLICT(code) DO NOTHING;
+            """, (fc_id, concept_code, concept_name, grade_amt))
+
+        # Verificar si ya existe deuda para este mes
+        cursor.execute("""
+        SELECT COUNT(*) FROM student_debts
+        WHERE student_id = ? AND (fee_concept_id = ? OR due_date = ?);
+        """, (student_id, fc_id, due_date))
+        if cursor.fetchone()[0] == 0:
+            final_amt = grade_amt
+            if is_sch and sch_pct > 0:
+                final_amt = round(grade_amt * (1.0 - (sch_pct / 100.0)), 2)
+            debt_id = f"sd_men_{m_num}_{student_id}_{int(time.time()*1000)}"
+            cursor.execute("""
+            INSERT INTO student_debts (id, student_id, fee_concept_id, amount_usd, due_date, status)
+            VALUES (?, ?, ?, ?, ?, 'PENDING');
+            """, (debt_id, student_id, fc_id, final_amt, due_date))
+
 def backup_scheduler_worker():
     while True:
         try:
             check_and_run_scheduled_backups()
+            check_and_auto_generate_monthly_tuition()
         except Exception as e:
-            print("Error en scheduler de respaldos:", e)
+            print("Error en scheduler de respaldos y mensualidades:", e)
         time.sleep(30)
 
 def generate_monthly_tuition_debts(conn, target_year=None, target_month=None):
@@ -3566,19 +3712,10 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 """, (student_id, s_code, s_doc_id or None, s_first_name, s_last_name, s_grade, s_section, is_sch, sch_pct, sch_reason))
                 created_students += 1
                 
-                # Debt concept
-                c.execute("SELECT id, amount_usd FROM fee_concepts WHERE is_recurring = 1 LIMIT 1;")
-                fc = c.fetchone()
-                if fc:
-                    debt_id = f"d_{uuid.uuid4().hex[:8]}"
-                    due_date = datetime.now().strftime("%Y-%m-%d")
-                    init_amt = float(fc[1])
-                    if is_sch and sch_pct > 0:
-                        init_amt = round(init_amt * (1.0 - (sch_pct / 100.0)), 2)
-                    c.execute("""
-                    INSERT INTO student_debts (id, student_id, fee_concept_id, amount_usd, due_date, status)
-                    VALUES (?, ?, ?, ?, ?, 'PENDING');
-                    """, (debt_id, student_id, fc[0], init_amt, due_date))
+                # Asignar paquete completo de deudas del año escolar:
+                # 1. Matrícula / Inscripción escolar (ej. MAT-2026-2027)
+                # 2. Mensualidades acumuladas desde Septiembre hasta el mes actual (ej. Sep y Oct), según grado y beca
+                assign_school_year_debts_to_student(c, student_id, s_grade, is_sch, sch_pct)
 
                 if guardian_id:
                     c.execute("INSERT OR REPLACE INTO student_guardians (student_id, guardian_id, relationship, is_primary) VALUES (?, ?, 'Representante', 1);", (student_id, guardian_id))
@@ -3587,7 +3724,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             conn.close()
             return self.send_json({
                 "success": True,
-                "message": f"Carga masiva completada con éxito: {created_students} estudiantes y {created_guardians} representantes creados.",
+                "message": f"Carga masiva completada con éxito: {created_students} estudiantes y {created_guardians} representantes creados. Se asignó automáticamente la Matrícula del año escolar y las mensualidades acumuladas (Septiembre y Octubre).",
                 "createdStudents": created_students,
                 "createdGuardians": created_guardians
             })
