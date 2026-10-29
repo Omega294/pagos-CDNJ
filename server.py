@@ -339,20 +339,24 @@ def check_and_run_scheduled_backups():
 
 def check_and_auto_generate_monthly_tuition():
     """
-    Verifica periódicamente si ha iniciado un nuevo mes escolar (del 1 al 12, excluyendo Agosto)
-    y genera automáticamente las mensualidades correspondientes para todos los estudiantes activos.
+    Verifica periódicamente (cada ciclo del scheduler) si ha iniciado un nuevo mes
+    o si faltan estudiantes por facturar en el mes en curso (para todos los meses del año).
+    Genera automáticamente las mensualidades el 1° de cada mes para todos los estudiantes activos.
     """
     try:
         sys_date = get_current_system_date()
         target_year = sys_date.year
         target_month = sys_date.month
 
-        # Agosto es receso escolar (vacaciones)
-        if target_month == 8:
-            return
-
         conn = get_db_connection()
         c = conn.cursor()
+
+        # Comprobar si Agosto está excluido por configuración institucional
+        c.execute("SELECT value_text FROM system_settings WHERE key_name = 'exclude_august';")
+        aug_row = c.fetchone()
+        if target_month == 8 and aug_row and aug_row[0] == '1':
+            conn.close()
+            return
 
         concept_code = f"MEN-{str(target_month).zfill(2)}-{target_year}"
         c.execute("""
@@ -368,7 +372,10 @@ def check_and_auto_generate_monthly_tuition():
 
         # Si faltan estudiantes activos por facturar en este mes
         if billed_count < active_count and active_count > 0:
-            generate_monthly_tuition_debts(conn, target_year=target_year, target_month=target_month)
+            month_name = MONTH_NAMES_ES.get(target_month, f"Mes {target_month}")
+            print(f"📅 [Auto-Facturación] 1° de Mes detectado: Generando automáticamente mensualidades para {month_name} {target_year} ({active_count} estudiantes)...")
+            res = generate_monthly_tuition_debts(conn, target_year=target_year, target_month=target_month)
+            print(f"✅ [Auto-Facturación] {res.get('message', 'Mensualidades cargadas exitosamente.')}")
         conn.close()
     except Exception as e:
         print("⚠️ Error en auto-generación periódica de mensualidades:", e)
@@ -501,8 +508,12 @@ def generate_monthly_tuition_debts(conn, target_year=None, target_month=None):
     target_year = int(target_year)
     target_month = int(target_month)
 
-    # August is vacation month (no school tuition debt generated)
-    if target_month == 8:
+    cursor = conn.cursor()
+
+    # Comprobar si Agosto está explícitamente excluido por política del colegio
+    cursor.execute("SELECT value_text FROM system_settings WHERE key_name = 'exclude_august';")
+    aug_row = cursor.fetchone()
+    if target_month == 8 and aug_row and aug_row[0] == '1':
         return {
             "success": True,
             "message": "Agosto es mes de receso escolar (vacaciones). No se generan mensualidades de cobro.",
@@ -518,8 +529,6 @@ def generate_monthly_tuition_debts(conn, target_year=None, target_month=None):
     concept_code = f"MEN-{str(target_month).zfill(2)}-{target_year}"
     concept_name = f"Mensualidad {month_name} {target_year}"
     due_date = f"{target_year}-{str(target_month).zfill(2)}-01"
-
-    cursor = conn.cursor()
 
     # 1. Get or Create Fee Concept for this month
     cursor.execute("SELECT id FROM fee_concepts WHERE code = ?;", (concept_code,))
