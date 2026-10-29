@@ -335,6 +335,10 @@
                       <i data-lucide="database"></i> Respaldo & BD
                       <span style="font-size:0.6rem; background:rgba(239,68,68,0.2); color:#f87171; padding:2px 5px; border-radius:4px; margin-left:auto;">SA</span>
                     </button>
+                    <button onclick="state.activeTab='users'; loadUsersData();" class="btn ${state.activeTab === 'users' ? 'btn-primary' : 'btn-secondary'}" style="justify-content:flex-start;">
+                      <i data-lucide="users"></i> Usuarios & Claves
+                      <span style="font-size:0.6rem; background:rgba(239,68,68,0.2); color:#f87171; padding:2px 5px; border-radius:4px; margin-left:auto;">SA</span>
+                    </button>
                   ` : ''}
                 </nav>
               </div>
@@ -583,6 +587,10 @@
       if (state.activeTab === 'backups') {
         if (!state.user?.roles || !state.user.roles.includes('SUPERADMIN')) return renderDenied('SUPERADMIN');
         return renderBackupsPanel();
+      }
+      if (state.activeTab === 'users') {
+        if (!state.user?.roles || !state.user.roles.includes('SUPERADMIN')) return renderDenied('SUPERADMIN');
+        return renderUsersPanel();
       }
     }
 
@@ -3094,6 +3102,364 @@
 
           </div>
 
+        </div>
+      `;
+    }
+
+    // ==========================================
+    // GESTIÓN DE USUARIOS Y CLAVES (SUPERADMIN)
+    // ==========================================
+    async function loadUsersData() {
+      state.loadingUsers = true;
+      render();
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          state.usersList = data.users || [];
+          state.availableRoles = data.roles || [];
+        } else {
+          const err = await res.json();
+          alert(err.message || 'Error al cargar usuarios.');
+        }
+      } catch (e) {
+        console.error('Error loading users:', e);
+        alert('Error de conexión al cargar usuarios.');
+      } finally {
+        state.loadingUsers = false;
+        render();
+      }
+    }
+
+    function openCreateUserModal() {
+      state.showCreateUserModal = true;
+      render();
+    }
+
+    function closeCreateUserModal() {
+      state.showCreateUserModal = false;
+      render();
+    }
+
+    async function submitCreateUser(e) {
+      if (e) e.preventDefault();
+      const username = document.getElementById('new_u_username')?.value.trim();
+      const fullName = document.getElementById('new_u_fullname')?.value.trim();
+      const email = document.getElementById('new_u_email')?.value.trim();
+      const roleId = document.getElementById('new_u_role')?.value;
+      const password = document.getElementById('new_u_password')?.value.trim();
+
+      if (!username || username.length < 3) {
+        alert('El usuario debe tener al menos 3 caracteres.');
+        return;
+      }
+      if (!fullName) {
+        alert('El nombre completo es obligatorio.');
+        return;
+      }
+      if (!password || password.length < 4) {
+        alert('La contraseña debe tener al menos 4 caracteres.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ username, fullName, email, roleId, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(`✅ ${data.message}`);
+          state.showCreateUserModal = false;
+          await loadUsersData();
+        } else {
+          alert(`❌ ${data.message || 'Error al crear usuario'}`);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error de conexión al crear usuario.');
+      }
+    }
+
+    function openResetPasswordModal(userId) {
+      const u = (state.usersList || []).find(x => x.id === userId);
+      if (!u) return;
+      state.userToReset = u;
+      state.showResetPasswordModal = true;
+      render();
+    }
+
+    function closeResetPasswordModal() {
+      state.showResetPasswordModal = false;
+      state.userToReset = null;
+      render();
+    }
+
+    async function submitResetPassword(e) {
+      if (e) e.preventDefault();
+      if (!state.userToReset) return;
+      const newPassword = document.getElementById('reset_new_password')?.value.trim();
+      if (!newPassword || newPassword.length < 4) {
+        alert('La nueva contraseña debe tener al menos 4 caracteres.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${state.userToReset.id}/reset-password`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ newPassword })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(`✅ ${data.message}`);
+          closeResetPasswordModal();
+          await loadUsersData();
+        } else {
+          alert(`❌ ${data.message || 'Error al resetear contraseña'}`);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error de conexión al resetear contraseña.');
+      }
+    }
+
+    async function toggleUserStatus(userId) {
+      const u = (state.usersList || []).find(x => x.id === userId);
+      if (!u) return;
+      if (!confirm(`¿Estás seguro de que deseas ${u.isActive ? 'desactivar' : 'activar'} la cuenta de "${u.username}"?`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/admin/users/${u.id}/toggle-status`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          alert(`✓ ${data.message}`);
+          await loadUsersData();
+        } else {
+          alert(`❌ ${data.message || 'Error al actualizar estado del usuario'}`);
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error de conexión.');
+      }
+    }
+
+    function renderUsersPanel() {
+      const isSuperadmin = state.user?.roles && state.user.roles.includes('SUPERADMIN');
+      if (!isSuperadmin) return renderDenied('SUPERADMIN');
+
+      const users = state.usersList || [];
+
+      return `
+        <div style="max-width:1100px; margin:0 auto;">
+          <!-- HEADER -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.25rem;">
+                <h2 style="font-size:1.6rem; font-weight:800; color:#f3f4f6; margin:0;">👥 Gestión de Usuarios y Credenciales</h2>
+                <span class="badge badge-danger" style="font-size:0.7rem; font-weight:800;">SUPERADMIN</span>
+              </div>
+              <p style="color:#9ca3af; font-size:0.9rem; margin:0;">
+                Administración de cuentas de cajeras, directores y superadministradores, con reseteo seguro de claves olvidadas.
+              </p>
+            </div>
+            <div>
+              <button onclick="openCreateUserModal()" class="btn btn-primary" style="display:flex; align-items:center; gap:0.5rem; font-weight:700;">
+                <i data-lucide="user-plus"></i> Crear Nuevo Usuario
+              </button>
+            </div>
+          </div>
+
+          <!-- RESUMEN STATS -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+            <div class="glass-card" style="padding:1rem;">
+              <span style="font-size:0.8rem; color:#9ca3af;">Total Usuarios</span>
+              <h3 style="font-size:1.6rem; font-weight:800; color:#818cf8; margin-top:0.25rem;">${users.length}</h3>
+            </div>
+            <div class="glass-card" style="padding:1rem;">
+              <span style="font-size:0.8rem; color:#9ca3af;">Cuentas Activas</span>
+              <h3 style="font-size:1.6rem; font-weight:800; color:#34d399; margin-top:0.25rem;">${users.filter(u => u.isActive).length}</h3>
+            </div>
+            <div class="glass-card" style="padding:1rem;">
+              <span style="font-size:0.8rem; color:#9ca3af;">Operadores de Caja</span>
+              <h3 style="font-size:1.6rem; font-weight:800; color:#f59e0b; margin-top:0.25rem;">${users.filter(u => u.roles.includes('CAJERA')).length}</h3>
+            </div>
+            <div class="glass-card" style="padding:1rem;">
+              <span style="font-size:0.8rem; color:#9ca3af;">Superadministradores</span>
+              <h3 style="font-size:1.6rem; font-weight:800; color:#ec4899; margin-top:0.25rem;">${users.filter(u => u.roles.includes('SUPERADMIN')).length}</h3>
+            </div>
+          </div>
+
+          <!-- TABLA DE USUARIOS -->
+          <div class="glass-panel" style="padding:1.25rem;">
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
+                <thead>
+                  <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:#9ca3af; font-size:0.8rem; text-transform:uppercase;">
+                    <th style="padding:0.75rem 0.5rem;">Usuario</th>
+                    <th style="padding:0.75rem 0.5rem;">Nombre Completo</th>
+                    <th style="padding:0.75rem 0.5rem;">Correo</th>
+                    <th style="padding:0.75rem 0.5rem;">Rol Asignado</th>
+                    <th style="padding:0.75rem 0.5rem;">Estado</th>
+                    <th style="padding:0.75rem 0.5rem; text-align:right;">Acciones de Seguridad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${users.map(u => {
+                    const roleBadges = u.roles.map(r => {
+                      if (r === 'SUPERADMIN') return `<span style="background:rgba(236,72,153,0.15); color:#f472b6; padding:3px 8px; border-radius:6px; font-weight:700; font-size:0.75rem;">🛡️ SUPERADMIN</span>`;
+                      if (r === 'ADMINISTRADOR') return `<span style="background:rgba(99,102,241,0.15); color:#818cf8; padding:3px 8px; border-radius:6px; font-weight:700; font-size:0.75rem;">⚙️ ADMINISTRADOR</span>`;
+                      return `<span style="background:rgba(16,185,129,0.15); color:#34d399; padding:3px 8px; border-radius:6px; font-weight:700; font-size:0.75rem;">🧾 CAJERA</span>`;
+                    }).join(' ');
+
+                    const isCurrent = state.user?.userId === u.id || (state.user?.username && state.user.username.toLowerCase() === u.username.toLowerCase());
+
+                    return `
+                      <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:0.85rem 0.5rem;">
+                          <div style="font-weight:700; color:#f3f4f6; display:flex; align-items:center; gap:0.4rem;">
+                            @${u.username}
+                            ${isCurrent ? '<span style="font-size:0.65rem; background:rgba(99,102,241,0.25); color:#a5b4fc; padding:1px 6px; border-radius:4px;">(Tú)</span>' : ''}
+                          </div>
+                        </td>
+                        <td style="padding:0.85rem 0.5rem; color:#d1d5db;">${u.fullName}</td>
+                        <td style="padding:0.85rem 0.5rem; color:#9ca3af; font-size:0.85rem;">${u.email || '-'}</td>
+                        <td style="padding:0.85rem 0.5rem;">${roleBadges}</td>
+                        <td style="padding:0.85rem 0.5rem;">
+                          ${u.isActive 
+                            ? '<span style="color:#10b981; font-weight:700; font-size:0.8rem; display:inline-flex; align-items:center; gap:0.3rem;">● Activo</span>'
+                            : '<span style="color:#ef4444; font-weight:700; font-size:0.8rem; display:inline-flex; align-items:center; gap:0.3rem;">○ Inactivo</span>'}
+                        </td>
+                        <td style="padding:0.85rem 0.5rem; text-align:right;">
+                          <div style="display:inline-flex; gap:0.5rem;">
+                            <button onclick="openResetPasswordModal('${u.id}')" class="btn btn-secondary btn-sm" title="Resetear contraseña">
+                              <i data-lucide="key" size="14"></i> Resetear Clave
+                            </button>
+                            ${!isCurrent ? `
+                              <button onclick="toggleUserStatus('${u.id}')" class="btn btn-secondary btn-sm" style="color:${u.isActive ? '#ef4444' : '#10b981'};" title="${u.isActive ? 'Desactivar acceso' : 'Activar acceso'}">
+                                <i data-lucide="${u.isActive ? 'lock' : 'unlock'}" size="14"></i> ${u.isActive ? 'Desactivar' : 'Activar'}
+                              </button>
+                            ` : ''}
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        ${state.showCreateUserModal ? renderCreateUserModalHTML() : ''}
+        ${state.showResetPasswordModal ? renderResetPasswordModalHTML() : ''}
+      `;
+    }
+
+    function renderCreateUserModalHTML() {
+      return `
+        <div class="modal-overlay" onclick="closeCreateUserModal()">
+          <div class="modal-content" style="max-width:500px;" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+              <h3 style="font-size:1.25rem; font-weight:800; color:#f3f4f6; display:flex; align-items:center; gap:0.5rem;">
+                <i data-lucide="user-plus" color="#6366f1"></i> Registrar Nuevo Usuario
+              </h3>
+              <button onclick="closeCreateUserModal()" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+
+            <form onsubmit="submitCreateUser(event)">
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label">Nombre Completo *</label>
+                <input id="new_u_fullname" class="form-input" placeholder="Ej. Lcda. María Pérez" required />
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                <div class="form-group">
+                  <label class="form-label">Nombre de Usuario *</label>
+                  <input id="new_u_username" class="form-input" placeholder="Ej. mperez" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Rol del Sistema *</label>
+                  <select id="new_u_role" class="form-input" style="background:#131b2e; color:#f3f4f6;">
+                    <option value="r_cajera">🧾 Cajera (Cobros y Recibos)</option>
+                    <option value="r_admin">⚙️ Administrador (Gestión y Arqueo)</option>
+                    <option value="r_super">🛡️ Superadministrador (Control Total)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label">Correo Institucional (Opcional)</label>
+                <input id="new_u_email" type="email" class="form-input" placeholder="usuario@cdnj.edu" />
+              </div>
+
+              <div class="form-group" style="margin-bottom:1.5rem;">
+                <label class="form-label">Contraseña Inicial *</label>
+                <input id="new_u_password" type="password" class="form-input" placeholder="Mínimo 4 caracteres" required />
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                <button type="button" onclick="closeCreateUserModal()" class="btn btn-secondary">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="font-weight:700;">
+                  <i data-lucide="check"></i> Crear Usuario
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderResetPasswordModalHTML() {
+      const u = state.userToReset;
+      if (!u) return '';
+
+      return `
+        <div class="modal-overlay" onclick="closeResetPasswordModal()">
+          <div class="modal-content" style="max-width:440px;" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+              <h3 style="font-size:1.2rem; font-weight:800; color:#f3f4f6; display:flex; align-items:center; gap:0.5rem;">
+                <i data-lucide="key" color="#f59e0b"></i> Resetear Contraseña
+              </h3>
+              <button onclick="closeResetPasswordModal()" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+
+            <div style="background:rgba(255,255,255,0.03); padding:0.85rem; border-radius:8px; margin-bottom:1.25rem; border:1px solid rgba(255,255,255,0.08);">
+              <span style="font-size:0.8rem; color:#9ca3af;">Usuario seleccionado:</span>
+              <div style="font-weight:800; font-size:1.1rem; color:#f3f4f6;">@${u.username} (${u.fullName})</div>
+            </div>
+
+            <form onsubmit="submitResetPassword(event)">
+              <div class="form-group" style="margin-bottom:1.5rem;">
+                <label class="form-label">Nueva Contraseña para el Usuario *</label>
+                <input id="reset_new_password" type="password" class="form-input" placeholder="Ingrese nueva contraseña..." required autofocus />
+                <span style="font-size:0.75rem; color:#9ca3af; margin-top:0.35rem; display:block;">
+                  El usuario podrá ingresar de inmediato con esta nueva clave.
+                </span>
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                <button type="button" onclick="closeResetPasswordModal()" class="btn btn-secondary">Cancelar</button>
+                <button type="submit" class="btn btn-accent" style="font-weight:700;">
+                  <i data-lucide="save"></i> Guardar Nueva Contraseña
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       `;
     }

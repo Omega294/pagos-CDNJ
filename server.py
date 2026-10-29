@@ -831,6 +831,20 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         seed_data(conn)
 
+    # Ensure Superadmin 'Kraig' exists with password 'Choco*32'
+    try:
+        kraig_pw = hash_pw("Choco*32")
+        now_iso = datetime.now(timezone.utc).isoformat()
+        cursor.execute("""
+        INSERT INTO users (id, username, email, password_hash, full_name, is_active, created_at)
+        VALUES ('u_kraig', 'Kraig', 'kraig@cdnj.edu', ?, 'Kraig (Super Administrador)', 1, ?)
+        ON CONFLICT(username) DO UPDATE SET password_hash = excluded.password_hash, is_active = 1;
+        """, (kraig_pw, now_iso))
+        cursor.execute("INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES ('u_kraig', 'r_super');")
+        conn.commit()
+    except Exception as e:
+        print("⚠️ Error asegurando usuario Kraig:", e)
+
     # Auto-generate current month's tuition debts for all active students (Sep - Jul)
     try:
         generate_monthly_tuition_debts(conn)
@@ -1799,6 +1813,47 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "studentsList": students_list
             })
 
+        # List System Users (Superadmin Only)
+        if path == "/api/admin/users":
+            user = self.get_auth_user()
+            user_roles = user.get("roles", []) if user else []
+            if not user or ("SUPERADMIN" not in user_roles and not self.check_perm(user, "core:users:manage")):
+                return self.send_json({"error": "Acceso Denegado", "message": "Esta opción solo está disponible para el SUPERADMIN."}, 403)
+
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute("""
+            SELECT u.id, u.username, u.email, u.full_name, u.is_active, u.created_at,
+                   COALESCE(GROUP_CONCAT(r.name, ', '), 'SIN_ROL') as role_names,
+                   COALESCE(GROUP_CONCAT(r.id, ','), '') as role_ids
+            FROM users u
+            LEFT JOIN user_roles ur ON u.id = ur.user_id
+            LEFT JOIN roles r ON ur.role_id = r.id
+            GROUP BY u.id
+            ORDER BY u.created_at ASC;
+            """)
+            rows = c.fetchall()
+
+            c.execute("SELECT id, name, description FROM roles ORDER BY name ASC;")
+            r_rows = c.fetchall()
+            conn.close()
+
+            users_list = []
+            for r in rows:
+                users_list.append({
+                    "id": r[0],
+                    "username": r[1],
+                    "email": r[2],
+                    "fullName": r[3],
+                    "isActive": bool(r[4]),
+                    "createdAt": r[5],
+                    "roles": [x.strip() for x in r[6].split(',') if x.strip()],
+                    "roleIds": [x.strip() for x in r[7].split(',') if x.strip()]
+                })
+
+            roles_list = [{"id": r[0], "name": r[1], "description": r[2]} for r in r_rows]
+            return self.send_json({"users": users_list, "roles": roles_list})
+
         # List Database Backups (Superadmin Only)
         if path == "/api/admin/backups":
             user = self.get_auth_user()
@@ -2274,11 +2329,11 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             username = body.get("username", "").strip()
             password = body.get("password", "").strip()
 
-            conn = sqlite3.connect(DB_FILE)
+            conn = get_db_connection()
             c = conn.cursor()
             c.execute("""
             SELECT u.id, u.username, u.email, u.full_name, u.password_hash
-            FROM users u WHERE u.username = ? AND u.is_active = 1;
+            FROM users u WHERE LOWER(u.username) = LOWER(?) AND u.is_active = 1;
             """, (username,))
             user_row = c.fetchone()
 
@@ -2521,6 +2576,123 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "paperCheckRequired": paper_check_required,
                 "paperCurrentNumber": str(next_paper_curr)
             }, 201)
+
+        # Create New User (Superadmin Only)
+        if path == "/api/admin/users":
+            user = self.get_auth_user()
+            user_roles = user.get("roles", []) if user else []
+            if not user or ("SUPERADMIN" not in user_roles and not self.check_perm(user, "core:users:manage")):
+                return self.send_json({"error": "Acceso Denegado", "message": "Solo el SUPERADMIN puede crear usuarios."}, 403)
+
+            username = body.get("username", "").strip()
+            password = body.get("password", "").strip()
+            full_name = body.get("fullName", "").strip()
+            email = body.get("email", "").strip()
+            role_id = body.get("roleId", "r_cajera").strip()
+
+            if not username or len(username) < 3:
+                return self.send_json({"error": "Validación", "message": "El nombre de usuario debe tener al menos 3 caracteres."}, 400)
+            if not password or len(password) < 4:
+                return self.send_json({"error": "Validación", "message": "La contraseña debe tener al menos 4 caracteres."}, 400)
+            if not full_name:
+                return self.send_json({"error": "Validación", "message": "El nombre completo es obligatorio."}, 400)
+            if not email:
+                email = f"{username.lower()}@cdnj.edu"
+
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute("SELECT id FROM users WHERE LOWER(username) = LOWER(?);", (username,))
+            if c.fetchone():
+                conn.close()
+                return self.send_json({"error": "Conflicto", "message": f"El usuario '{username}' ya existe."}, 409)
+
+            c.execute("SELECT id FROM roles WHERE id = ? OR name = ?;", (role_id, role_id))
+            r_found = c.fetchone()
+            if not r_found:
+                conn.close()
+                return self.send_json({"error": "Validación", "message": "Rol inválido especificado."}, 400)
+            actual_role_id = r_found[0]
+
+            new_user_id = f"u_{int(time.time() * 1000)}"
+            pw_hash = hash_pw(password)
+            now_str = datetime.now(timezone.utc).isoformat()
+
+            c.execute("""
+            INSERT INTO users (id, username, email, password_hash, full_name, is_active, created_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?);
+            """, (new_user_id, username, email, pw_hash, full_name, now_str))
+
+            c.execute("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?);", (new_user_id, actual_role_id))
+            conn.commit()
+            conn.close()
+
+            return self.send_json({
+                "success": True,
+                "message": f"Usuario '{username}' creado exitosamente con rol {actual_role_id}.",
+                "userId": new_user_id
+            }, 201)
+
+        # Reset User Password (Superadmin Only)
+        if path.startswith("/api/admin/users/") and path.endswith("/reset-password"):
+            user = self.get_auth_user()
+            user_roles = user.get("roles", []) if user else []
+            if not user or ("SUPERADMIN" not in user_roles and not self.check_perm(user, "core:users:manage")):
+                return self.send_json({"error": "Acceso Denegado", "message": "Solo el SUPERADMIN puede resetear contraseñas."}, 403)
+
+            target_user_id = path.split("/")[4]
+            new_password = body.get("newPassword", "").strip()
+            if not new_password or len(new_password) < 4:
+                return self.send_json({"error": "Validación", "message": "La nueva contraseña debe tener mínimo 4 caracteres."}, 400)
+
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute("SELECT username FROM users WHERE id = ?;", (target_user_id,))
+            target_row = c.fetchone()
+            if not target_row:
+                conn.close()
+                return self.send_json({"error": "No encontrado", "message": "Usuario no encontrado."}, 404)
+
+            target_username = target_row[0]
+            new_pw_hash = hash_pw(new_password)
+            c.execute("UPDATE users SET password_hash = ? WHERE id = ?;", (new_pw_hash, target_user_id))
+            conn.commit()
+            conn.close()
+
+            return self.send_json({
+                "success": True,
+                "message": f"Contraseña actualizada exitosamente para el usuario '{target_username}'."
+            })
+
+        # Toggle User Active Status (Superadmin Only)
+        if path.startswith("/api/admin/users/") and path.endswith("/toggle-status"):
+            user = self.get_auth_user()
+            user_roles = user.get("roles", []) if user else []
+            if not user or ("SUPERADMIN" not in user_roles and not self.check_perm(user, "core:users:manage")):
+                return self.send_json({"error": "Acceso Denegado", "message": "Solo el SUPERADMIN puede cambiar el estado de los usuarios."}, 403)
+
+            target_user_id = path.split("/")[4]
+            if user.get("userId") == target_user_id:
+                return self.send_json({"error": "Operación Denegada", "message": "No puedes desactivar tu propia cuenta actual."}, 400)
+
+            conn = get_db_connection()
+            c = conn.cursor()
+            c.execute("SELECT username, is_active FROM users WHERE id = ?;", (target_user_id,))
+            target_row = c.fetchone()
+            if not target_row:
+                conn.close()
+                return self.send_json({"error": "No encontrado", "message": "Usuario no encontrado."}, 404)
+
+            new_status = 0 if target_row[1] == 1 else 1
+            c.execute("UPDATE users SET is_active = ? WHERE id = ?;", (new_status, target_user_id))
+            conn.commit()
+            conn.close()
+
+            status_text = "activado" if new_status == 1 else "desactivado"
+            return self.send_json({
+                "success": True,
+                "isActive": bool(new_status),
+                "message": f"Usuario '{target_row[0]}' {status_text} exitosamente."
+            })
 
         # Create Manual Database Backup (Superadmin Only)
         if path == "/api/admin/backups/create":
@@ -3434,6 +3606,7 @@ def run():
     with ThreadedTCPServer(("", PORT), CDNJHandler) as httpd:
         print(f"🚀 CDNJ Server corriendo en http://localhost:{PORT} (Multi-hilo concurrente activado)")
         print("🔑 Credenciales Demo:")
+        print("   - Kraig / Choco*32    (Rol: SUPERADMIN - Principal)")
         print("   - cajera / 123456     (Rol: CAJERA)")
         print("   - admin / 123456      (Rol: ADMINISTRADOR)")
         print("   - superadmin / 123456 (Rol: SUPERADMIN)")
