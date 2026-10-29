@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual de Usuario – Perfil Superadmin | CDNJ School Platform</title>
+  <meta name="description" content="Manual de usuario completo para el perfil Superadmin del sistema CDNJ School Platform. Control total del sistema, gestión de usuarios, roles y configuración global.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19; --bg2: #131b2e; --border: rgba(255,255,255,0.08); --text: #f3f4f6; --muted: #9ca3af;
+      --accent: #a855f7; --accent-light: #c084fc; --green: #10b981; --green-light: #34d399;
+      --indigo: #6366f1; --danger: #ef4444; --warning: #f59e0b; --glass: rgba(255,255,255,0.04);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+    .sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: rgba(19,27,46,0.95); border-right: 1px solid var(--border); padding: 2rem 1.25rem; overflow-y: auto; z-index: 100; }
+    .sidebar-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+    .logo-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 4px 16px rgba(168,85,247,0.4); }
+    .logo-text h2 { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .logo-text span { font-size: 0.72rem; color: var(--muted); }
+    .sidebar-section { margin-bottom: 1.75rem; }
+    .sidebar-section-title { font-size: 0.7rem; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; }
+    .sidebar a { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.85rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.2rem; transition: all 0.2s; }
+    .sidebar a:hover, .sidebar a.active { background: rgba(168,85,247,0.12); color: var(--accent-light); }
+    .sidebar a .num { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
+    .main { margin-left: 260px; }
+    .hero { background: linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(99,102,241,0.1) 50%, transparent 100%); border-bottom: 1px solid var(--border); padding: 4rem 4rem 3rem; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: -100px; right: -100px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(168,85,247,0.12), transparent 70%); border-radius: 50%; }
+    .hero::after { content: ''; position: absolute; bottom: -80px; left: 10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(99,102,241,0.08), transparent 70%); border-radius: 50%; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.85rem; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.35); border-radius: 9999px; font-size: 0.78rem; font-weight: 700; color: var(--accent-light); margin-bottom: 1.25rem; }
+    .hero h1 { font-size: 2.75rem; font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+    .hero h1 span { background: linear-gradient(135deg, #a855f7, #6366f1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero p { color: var(--muted); font-size: 1.05rem; max-width: 600px; margin-bottom: 2rem; }
+    .hero-meta { display: flex; gap: 2rem; flex-wrap: wrap; }
+    .hero-meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+    .hero-meta-item .label { font-size: 0.72rem; color: #4b5563; font-weight: 600; text-transform: uppercase; }
+    .hero-meta-item .value { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .hero-meta-item .value.purple { color: var(--accent-light); }
+    .content { padding: 3rem 4rem; max-width: 1000px; }
+    .section { margin-bottom: 4rem; scroll-margin-top: 2rem; }
+    .section-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .section-icon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; }
+    .icon-green { background: rgba(16,185,129,0.15); } .icon-blue { background: rgba(99,102,241,0.15); }
+    .icon-orange { background: rgba(245,158,11,0.15); } .icon-red { background: rgba(239,68,68,0.15); }
+    .icon-purple { background: rgba(168,85,247,0.15); }
+    .section-header h2 { font-size: 1.4rem; font-weight: 700; }
+    .section-header .section-num { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+    .card { background: var(--glass); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; margin-bottom: 1.25rem; }
+    .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card p { color: var(--muted); font-size: 0.9rem; }
+    .card.purple { border-color: rgba(168,85,247,0.3); background: rgba(168,85,247,0.06); }
+    .card.highlight { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06); }
+    .card.danger { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+    .card.indigo { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.06); }
+    .card.warning { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); }
+    .steps { display: flex; flex-direction: column; gap: 1rem; }
+    .step { display: flex; gap: 1.25rem; align-items: flex-start; }
+    .step-num { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #a855f7, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(168,85,247,0.3); }
+    .step-body h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .step-body p { font-size: 0.875rem; color: var(--muted); }
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: rgba(255,255,255,0.04); }
+    th { padding: 0.85rem 1rem; text-align: left; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+    td { padding: 0.85rem 1rem; font-size: 0.875rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; }
+    .badge-green { background: rgba(16,185,129,0.2); color: #34d399; }
+    .badge-red { background: rgba(239,68,68,0.2); color: #f87171; }
+    .badge-yellow { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .badge-blue { background: rgba(99,102,241,0.2); color: #818cf8; }
+    .badge-purple { background: rgba(168,85,247,0.2); color: #c084fc; }
+    .alert { display: flex; gap: 0.85rem; padding: 1rem 1.25rem; border-radius: 10px; margin: 1.25rem 0; font-size: 0.875rem; }
+    .alert-icon { font-size: 1.15rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .alert.alert-tip { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); }
+    .alert.alert-warn { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); }
+    .alert.alert-info { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); }
+    .alert.alert-danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); }
+    .alert.alert-purple { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.25); }
+    .alert strong { display: block; margin-bottom: 0.25rem; }
+    code { font-family: 'Courier New', monospace; background: rgba(255,255,255,0.08); padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.82rem; color: #c084fc; }
+    .perms-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .perm-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.75rem; background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.25); border-radius: 9999px; font-size: 0.78rem; font-weight: 600; color: #c084fc; }
+    .perm-chip.wildcard { background: linear-gradient(135deg, rgba(168,85,247,0.2), rgba(99,102,241,0.2)); border-color: rgba(168,85,247,0.4); color: white; font-size: 0.9rem; padding: 0.4rem 1rem; }
+    .role-matrix { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); }
+    .matrix-header { background: rgba(255,255,255,0.06); padding: 0.75rem 1rem; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; border-bottom: 1px solid var(--border); }
+    .matrix-cell { padding: 0.75rem 1rem; font-size: 0.875rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; }
+    .matrix-cell:first-child { justify-content: flex-start; }
+    .matrix-row:last-child .matrix-cell { border-bottom: none; }
+    @media print { .sidebar { display: none; } .main { margin-left: 0; } }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">👑</div>
+    <div class="logo-text">
+      <h2>CDNJ Modular</h2>
+      <span>Manual de Usuario</span>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Contenido</div>
+    <a href="#perfil"><span class="num">1</span> Perfil Superadmin</a>
+    <a href="#acceso"><span class="num">2</span> Acceso y Seguridad</a>
+    <a href="#todo"><span class="num">3</span> Acceso Total (*)</a>
+    <a href="#roles"><span class="num">4</span> Matriz de Roles</a>
+    <a href="#funciones"><span class="num">5</span> Todas las Funciones</a>
+    <a href="#demo"><span class="num">6</span> Modo Demo</a>
+    <a href="#buenas"><span class="num">7</span> Buenas Prácticas</a>
+    <a href="#permisos"><span class="num">8</span> Sistema RBAC</a>
+    <a href="#futuro"><span class="num">9</span> Módulos Futuros</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Otros Perfiles</div>
+    <a href="manual_cajera.html">💳 Cajera</a>
+    <a href="manual_administrador.html">👔 Administrador</a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="hero">
+    <div class="hero-badge">👑 Perfil: SUPERADMIN</div>
+    <h1>Manual de Usuario<br><span>Superadmin – Control Total del Sistema</span></h1>
+    <p>Guía completa para el Superadministrador del sistema CDNJ. Este perfil posee acceso irrestricto a todas las funcionalidades, configuraciones y módulos de la plataforma.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="label">Versión</span>
+        <span class="value">v1.0</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Usuario Demo</span>
+        <span class="value purple">superadmin / 123456</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Nivel de Acceso</span>
+        <span class="value purple">TOTAL (*)</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Permiso Global</span>
+        <span class="value purple">Wildcard (*)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- S1: Perfil -->
+    <div class="section" id="perfil">
+      <div class="section-header">
+        <div class="section-icon icon-purple">👑</div>
+        <div>
+          <div class="section-num">Sección 1</div>
+          <h2>Perfil Superadmin</h2>
+        </div>
+      </div>
+
+      <div class="alert alert-purple">
+        <span class="alert-icon">👑</span>
+        <div><strong>Acceso Irrestricto Total</strong> El perfil SUPERADMIN tiene acceso implícito a <strong>todas</strong> las funcionalidades del sistema mediante el permiso wildcard <code>*</code>. No existen restricciones de acceso para este perfil. Actúa con máxima responsabilidad.</div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El <strong style="color:var(--text)">Superadmin</strong> es el nivel más alto de autoridad en el sistema CDNJ. Su función es la configuración global de la plataforma, gestión de usuarios y roles, y supervisión de todos los módulos del sistema.</p>
+
+      <div class="card purple" style="margin-bottom: 1rem;">
+        <h3>⚡ Puede realizar TODO lo siguiente (y más)</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.875rem; color: var(--muted);">
+          <div>💳 Registrar cobros y pagos</div>
+          <div>📊 Ver historial completo</div>
+          <div>❌ Anular cualquier recibo</div>
+          <div>🧮 Ejecutar cierres de caja</div>
+          <div>⚙️ Configurar tasas de cambio</div>
+          <div>📋 Gestionar catálogo de aranceles</div>
+          <div>👤 Crear y gestionar usuarios</div>
+          <div>🔑 Asignar y modificar roles</div>
+          <div>🏗️ Configurar módulos del sistema</div>
+          <div>📦 Acceder a logs del sistema</div>
+          <div>🔧 Configuración avanzada global</div>
+          <div>🚀 Habilitar próximos módulos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S2: Acceso y Seguridad -->
+    <div class="section" id="acceso">
+      <div class="section-header">
+        <div class="section-icon icon-red">🔒</div>
+        <div>
+          <div class="section-num">Sección 2</div>
+          <h2>Acceso y Seguridad de la Cuenta</h2>
+        </div>
+      </div>
+
+      <div class="alert alert-danger">
+        <span class="alert-icon">🚨</span>
+        <div><strong>Cuenta de Máxima Sensibilidad</strong> La cuenta SUPERADMIN tiene acceso total al sistema. Su compromiso puede resultar en la pérdida o modificación de todos los datos financieros del colegio. Protege las credenciales con máxima prioridad.</div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Contraseña Robusta Obligatoria</h4>
+            <p>La contraseña del Superadmin debe ser de al menos 16 caracteres, combinando mayúsculas, minúsculas, números y símbolos especiales. Cámbiala periódicamente (mínimo cada 90 días).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Acceso Exclusivo y Personal</h4>
+            <p>Nunca compartas las credenciales de Superadmin con otras personas, ni siquiera con administradores. Si alguien más necesita capacidades elevadas, créale una cuenta propia con los permisos apropiados.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Cerrar Sesión Siempre</h4>
+            <p>Al terminar cualquier tarea, cierra sesión usando el botón de <strong>LogOut</strong> en la barra superior. Nunca dejes la sesión de Superadmin abierta sin supervisión.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Monitorear el Log de Acciones</h4>
+            <p>Como Superadmin, tienes acceso a los logs del sistema. Revisa periódicamente las acciones realizadas por todos los usuarios para detectar actividades sospechosas.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3: Acceso Total -->
+    <div class="section" id="todo">
+      <div class="section-header">
+        <div class="section-icon icon-purple">⚡</div>
+        <div>
+          <div class="section-num">Sección 3</div>
+          <h2>El Permiso Wildcard (*) – Acceso Total</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El sistema CDNJ implementa RBAC (Role-Based Access Control) granular. El Superadmin posee el permiso especial <code>*</code> (wildcard) que bypasea todas las verificaciones de permisos.</p>
+
+      <div class="card purple" style="margin-bottom: 1.5rem;">
+        <h3>🌟 Permiso Wildcard</h3>
+        <div class="perms-grid">
+          <span class="perm-chip wildcard">⚡ * (Control Total Implícito)</span>
+        </div>
+        <p style="margin-top: 1rem; font-size: 0.85rem;">Este único permiso equivale a tener <strong style="color: var(--text)">todos los permisos posibles del sistema</strong>, presentes y futuros. Al agregar nuevos módulos al sistema, el Superadmin tendrá acceso automático sin necesidad de configuración adicional.</p>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div><strong>Implementación Técnica:</strong> En el sistema, la verificación de permisos primero comprueba si el usuario tiene el rol SUPERADMIN o el permiso <code>*</code>. Si es así, la verificación retorna <code>true</code> inmediatamente sin evaluar permisos específicos.</div>
+      </div>
+    </div>
+
+    <!-- S4: Matriz de Roles -->
+    <div class="section" id="roles">
+      <div class="section-header">
+        <div class="section-icon icon-blue">📊</div>
+        <div>
+          <div class="section-num">Sección 4</div>
+          <h2>Matriz de Roles y Permisos del Sistema</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">Como Superadmin, es fundamental que conozcas la arquitectura de permisos del sistema para gestionar correctamente los accesos de cada usuario.</p>
+
+      <div class="table-wrap" style="margin-bottom: 1.5rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>Permiso / Función</th>
+              <th style="text-align:center">💳 Cajera</th>
+              <th style="text-align:center">👔 Admin</th>
+              <th style="text-align:center">👑 Superadmin</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Registrar Pagos (Cobro en Caja)</td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Buscar Alumnos y Ver Deudas</td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Ver e Imprimir Recibos</td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Ver Historial de Transacciones</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Anular Recibos (con motivo)</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Ejecutar Cierre de Caja</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Actualizar Tasa de Cambio</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Ver Catálogo de Aranceles</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-green">✅</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Crear/Modificar Conceptos de Cobro</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Gestionar Usuarios del Sistema</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Asignar y Modificar Roles</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Acceso a Logs del Sistema</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+            <tr>
+              <td>Habilitar Módulos Futuros</td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-red">❌</span></td>
+              <td style="text-align:center"><span class="badge badge-purple">⚡</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="font-size: 0.8rem; color: var(--muted); display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+        <span><span class="badge badge-green">✅</span> Permitido para ese rol</span>
+        <span><span class="badge badge-red">❌</span> Denegado para ese rol</span>
+        <span><span class="badge badge-purple">⚡</span> Acceso por permiso wildcard (*)</span>
+      </div>
+    </div>
+
+    <!-- S5: Todas las Funciones -->
+    <div class="section" id="funciones">
+      <div class="section-header">
+        <div class="section-icon icon-purple">🚀</div>
+        <div>
+          <div class="section-num">Sección 5</div>
+          <h2>Todas las Funciones Disponibles</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El Superadmin tiene acceso a todas las funciones documentadas en los manuales de Cajera y Administrador. Adicionalmente, tiene acceso exclusivo a:</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card purple">
+          <h3>👥 Gestión de Usuarios</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--muted);">
+            <li>➕ Crear nuevos usuarios en el sistema</li>
+            <li>✏️ Editar datos de usuarios existentes</li>
+            <li>🔒 Bloquear o desactivar usuarios</li>
+            <li>🔑 Resetear contraseñas</li>
+            <li>👁️ Ver todos los usuarios activos</li>
+          </ul>
+        </div>
+        <div class="card indigo">
+          <h3>🔑 Gestión de Roles y Permisos</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--muted);">
+            <li>🆕 Crear nuevos roles personalizados</li>
+            <li>⚙️ Asignar permisos específicos a roles</li>
+            <li>👤 Cambiar el rol de cualquier usuario</li>
+            <li>📋 Gestionar el catálogo de permisos</li>
+            <li>🔍 Auditar permisos de cualquier usuario</li>
+          </ul>
+        </div>
+        <div class="card highlight">
+          <h3>💰 Configuración Financiera Global</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--muted);">
+            <li>📦 Crear nuevos conceptos de aranceles</li>
+            <li>✏️ Modificar tarifas existentes</li>
+            <li>🗑️ Desactivar conceptos obsoletos</li>
+            <li>📅 Configurar períodos de pago</li>
+            <li>💱 Gestionar tasas de cambio históricas</li>
+          </ul>
+        </div>
+        <div class="card warning">
+          <h3>⚙️ Configuración del Sistema</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem; color: var(--muted);">
+            <li>🏗️ Configurar parámetros globales</li>
+            <li>📊 Acceder a reportes de sistema</li>
+            <li>🔧 Configurar integraciones</li>
+            <li>🚀 Habilitar módulos en desarrollo</li>
+            <li>📝 Gestionar plantillas de recibos</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="alert alert-tip">
+        <span class="alert-icon">💡</span>
+        <div><strong>Referencia Completa:</strong> Para las funciones de cobro, consulta el <a href="manual_cajera.html" style="color: var(--green-light);">Manual de Cajera</a>. Para funciones de supervisión y cierre de caja, consulta el <a href="manual_administrador.html" style="color: #818cf8;">Manual de Administrador</a>. Este manual cubre las funciones <strong>exclusivas</strong> del Superadmin.</div>
+      </div>
+    </div>
+
+    <!-- S6: Modo Demo -->
+    <div class="section" id="demo">
+      <div class="section-header">
+        <div class="section-icon icon-orange">🎭</div>
+        <div>
+          <div class="section-num">Sección 6</div>
+          <h2>Funciones Demo del Sistema</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El sistema CDNJ incluye funcionalidades especiales para entornos de demostración que son de conocimiento exclusivo del Superadmin.</p>
+
+      <div class="card indigo" style="margin-bottom: 1rem;">
+        <h3>🔄 Cambiador Rápido de Roles (Demo)</h3>
+        <p>En la barra de navegación superior existe un <strong>selector de roles demo</strong> con los botones: <strong>Cajera</strong>, <strong>Admin</strong> y <strong>Superadmin</strong>. Este componente permite cambiar entre perfiles con un solo clic para demostraciones del sistema RBAC.</p>
+        <div class="alert alert-warn" style="margin-top: 1rem;">
+          <span class="alert-icon">⚠️</span>
+          <div><strong>Solo para Demo:</strong> En un entorno de producción real, este cambiador debería ser deshabilitado. Cada usuario debe autenticarse con sus propias credenciales.</div>
+        </div>
+      </div>
+
+      <div class="card purple">
+        <h3>🏎️ Acceso 1-Click en Login</h3>
+        <p>La pantalla de login incluye tarjetas de acceso rápido que permiten ingresar con cualquier perfil con un solo clic, sin necesidad de escribir credenciales. Estas tarjetas son visibles para cualquier visitante de la página de login.</p>
+        <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted);">
+          <p>Credenciales demo configuradas:</p>
+          <div style="display: flex; gap: 1.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+            <span>💳 <code style="color:#34d399">cajera</code> / <code style="color:#34d399">123456</code></span>
+            <span>👔 <code style="color:#818cf8">admin</code> / <code style="color:#818cf8">123456</code></span>
+            <span>👑 <code style="color:#c084fc">superadmin</code> / <code style="color:#c084fc">123456</code></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S7: Buenas Prácticas -->
+    <div class="section" id="buenas">
+      <div class="section-header">
+        <div class="section-icon icon-green">✅</div>
+        <div>
+          <div class="section-num">Sección 7</div>
+          <h2>Buenas Prácticas para el Superadmin</h2>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="card highlight">
+          <h3>🔐 Principio de Mínimo Privilegio</h3>
+          <p>Aunque puedes otorgar cualquier permiso, sigue el principio de <strong style="color:var(--text)">mínimo privilegio</strong>: asigna a cada usuario solo los permisos estrictamente necesarios para su función. Evita crear muchos usuarios con rol Administrador innecesariamente.</p>
+        </div>
+        <div class="card indigo">
+          <h3>📝 Documentar Cambios de Configuración</h3>
+          <p>Cada vez que modifiques configuraciones críticas (aranceles, roles, permisos), documenta el cambio con fecha, motivo y usuario responsable. Mantén un registro externo de los cambios de configuración para auditorías.</p>
+        </div>
+        <div class="card warning">
+          <h3>🧪 Probar en Entorno Demo Primero</h3>
+          <p>Si vas a realizar cambios importantes al sistema (nuevos conceptos de pago, cambios de roles), primero verifica su funcionamiento en el entorno demo antes de aplicarlos en producción.</p>
+        </div>
+        <div class="card danger">
+          <h3>🚨 Revisión Periódica de Usuarios</h3>
+          <p>Realiza una revisión mensual de todos los usuarios activos del sistema. Desactiva inmediatamente las cuentas de empleados que ya no trabajan en la institución para prevenir accesos no autorizados.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- S8: Sistema RBAC -->
+    <div class="section" id="permisos">
+      <div class="section-header">
+        <div class="section-icon icon-purple">🔑</div>
+        <div>
+          <div class="section-num">Sección 8</div>
+          <h2>Arquitectura RBAC del Sistema</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El sistema CDNJ implementa <strong style="color:var(--text)">RBAC Granular (Role-Based Access Control)</strong>. Cada función está protegida por un permiso específico con el formato <code>módulo:submodulo:acción</code>.</p>
+
+      <div class="table-wrap" style="margin-bottom: 1.5rem;">
+        <table>
+          <thead>
+            <tr><th>Permiso</th><th>Módulo</th><th>Función</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>payments:cashier:create_payment</code></td>
+              <td><span class="badge badge-green">Cobros</span></td>
+              <td>Registrar nuevos pagos en caja</td>
+            </tr>
+            <tr>
+              <td><code>payments:cashier:search_students</code></td>
+              <td><span class="badge badge-green">Cobros</span></td>
+              <td>Buscar alumnos y ver sus deudas</td>
+            </tr>
+            <tr>
+              <td><code>payments:cashier:view_receipt</code></td>
+              <td><span class="badge badge-green">Cobros</span></td>
+              <td>Ver e imprimir recibos emitidos</td>
+            </tr>
+            <tr>
+              <td><code>payments:admin:view_history</code></td>
+              <td><span class="badge badge-blue">Admin</span></td>
+              <td>Acceder al historial de transacciones</td>
+            </tr>
+            <tr>
+              <td><code>payments:admin:void_receipt</code></td>
+              <td><span class="badge badge-blue">Admin</span></td>
+              <td>Anular recibos con motivo documentado</td>
+            </tr>
+            <tr>
+              <td><code>payments:admin:close_box</code></td>
+              <td><span class="badge badge-blue">Admin</span></td>
+              <td>Ejecutar cierre de caja diario</td>
+            </tr>
+            <tr>
+              <td><code>payments:config:manage_rates</code></td>
+              <td><span class="badge badge-yellow">Config</span></td>
+              <td>Actualizar tasa de cambio y ver aranceles</td>
+            </tr>
+            <tr>
+              <td><code>*</code></td>
+              <td><span class="badge badge-purple">GLOBAL</span></td>
+              <td>Todos los permisos (solo Superadmin)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div><strong>Extensión del Sistema RBAC:</strong> Al agregar nuevos módulos al sistema (Calificaciones, Matrículas, Asistencia), se crearán nuevos permisos con el mismo esquema <code>modulo:submodulo:accion</code>. El Superadmin tendrá acceso automático por su permiso wildcard <code>*</code>.</div>
+      </div>
+    </div>
+
+    <!-- S9: Módulos Futuros -->
+    <div class="section" id="futuro">
+      <div class="section-header">
+        <div class="section-icon icon-orange">🚀</div>
+        <div>
+          <div class="section-num">Sección 9</div>
+          <h2>Módulos Futuros del Sistema</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El sistema CDNJ está diseñado con arquitectura modular escalable. Los siguientes módulos están en el roadmap de desarrollo:</p>
+
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>🎓 Módulo de Calificaciones</h3>
+            <span class="badge badge-yellow">En Desarrollo</span>
+          </div>
+          <p>Gestión de notas, boletines y promedios estudiantiles por período. Incluirá control de acceso diferenciado para Docentes, Coordinadores y Directivos.</p>
+        </div>
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>👥 Módulo de Matrículas</h3>
+            <span class="badge badge-yellow">Planificado</span>
+          </div>
+          <p>Proceso completo de inscripción y reinscripción de alumnos, asignación de secciones y control de cupos por grado/nivel.</p>
+        </div>
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>📅 Módulo de Asistencia</h3>
+            <span class="badge badge-yellow">Planificado</span>
+          </div>
+          <p>Control de asistencia diaria de alumnos, reportes de inasistencias y notificación a representantes. Incluirá vista por docente y por directivo.</p>
+        </div>
+      </div>
+
+      <div class="alert alert-purple" style="margin-top: 1.5rem;">
+        <span class="alert-icon">👑</span>
+        <div><strong>Habilitación de Módulos:</strong> Como Superadmin, serás el responsable de habilitar y configurar cada nuevo módulo antes de ponerlo en producción. Asegúrate de crear los permisos apropiados y asignarlos a los roles correspondientes antes de la activación.</div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="border-top: 1px solid var(--border); padding-top: 2rem; margin-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; color: var(--muted); font-size: 0.8rem;">
+      <div>
+        <strong style="color:var(--text)">CDNJ School Platform v1.0</strong><br>
+        Manual de Usuario – Perfil: Superadmin<br>
+        © 2026 – Todos los derechos reservados
+      </div>
+      <div style="text-align: right;">
+        <a href="manual_cajera.html" style="color: #34d399; text-decoration: none; margin-left: 1rem;">💳 Manual Cajera</a>
+        <a href="manual_administrador.html" style="color: #818cf8; text-decoration: none; margin-left: 1rem;">👔 Manual Administrador</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,435 @@
+{\rtf1\ansi\ansicpg1252\deff0\deflang3082
+{\fonttbl{\f0\froman\fcharset0 Times New Roman;}{\f1\fswiss\fcharset0 Calibri;}{\f2\fmodern\fcharset0 Courier New;}}
+{\colortbl;\red11\green15\blue25;\red16\green185\blue129;\red99\green102\blue241;\red239\green68\blue68;\red245\green158\blue11;\red52\green211\blue153;\red129\green140\blue248;\red249\green250\blue251;\red17\green24\blue39;\red107\green114\blue128;}
+\widowctrl\hyphauto
+\paperw12240\paperh15840\margl1440\margr1440\margt1440\margb1440
+
+{\pard\sb400\sa200\qc
+{\f1\fs48\b\cf3 CDNJ School Platform}
+\par}
+
+{\pard\sb0\sa100\qc
+{\f1\fs20\cf10 Sistema de Gesti\'f3n Escolar | Versi\'f3n 1.0}
+\par}
+
+{\pard\sb0\sa400\qc
+{\f1\fs36\b\cf3 MANUAL DE USUARIO}
+\par}
+
+{\pard\sb0\sa100\qc
+{\f1\fs32\b PERFIL: ADMINISTRADOR}
+\par}
+
+{\pard\sb0\sa400\qc
+{\f1\fs20\cf10 \'a9 2026 CDNJ School Platform | Todos los derechos reservados}
+\par}
+
+\pard\sb200\sa200{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb400\sa100
+{\f1\fs24\b\cf9 INFORMACI\'d3N DEL DOCUMENTO}
+\par}
+
+{\pard\sb0\sa100
+{\f1\fs20\b Perfil:}\tab{\f1\fs20 ADMINISTRADOR}
+\par
+{\f1\fs20\b Usuario Demo:}\tab{\f1\fs20 admin / 123456}
+\par
+{\f1\fs20\b Representante:}\tab{\f1\fs20 Lic. Ana Mart\'ednez}
+\par
+{\f1\fs20\b Versi\'f3n del Sistema:}\tab{\f1\fs20 v1.0}
+\par
+{\f1\fs20\b Fecha de Emisi\'f3n:}\tab{\f1\fs20 Octubre 2026}
+\par}
+
+\pard\sb200\sa200{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb400\sa100
+{\f1\fs28\b\cf9 \'cdNDICE DE CONTENIDO}
+\par}
+
+{\pard\sb0\sa100
+{\f1\fs20 1.\tab Perfil y Responsabilidades}
+\par
+{\f1\fs20 2.\tab Inicio de Sesi\'f3n}
+\par
+{\f1\fs20 3.\tab Panel de Supervisi\'f3n y Control Financiero}
+\par
+{\f1\fs20 4.\tab Historial Auditado de Pagos}
+\par
+{\f1\fs20 5.\tab Consulta de Recibos}
+\par
+{\f1\fs20 6.\tab Anulaci\'f3n de Recibo con Auditor\'eda}
+\par
+{\f1\fs20 7.\tab Cierre de Caja Diario}
+\par
+{\f1\fs20 8.\tab Cat\'e1logo de Aranceles y Tarifas}
+\par
+{\f1\fs20 9.\tab Actualizaci\'f3n de Tasa de Cambio}
+\par
+{\f1\fs20 10.\tab Permisos Granulares del Perfil}
+\par}
+
+\page
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 1. PERFIL Y RESPONSABILIDADES}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El {\b Administrador} es el responsable de la supervisi\'f3n financiera del sistema. Tiene acceso completo al historial de pagos, puede anular recibos con justificaci\'f3n auditada, realizar el cierre de caja y gestionar los aranceles escolares.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b\cf2 [PUEDE REALIZAR]}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 \u10003  Ver historial completo de transacciones del sistema}
+\par
+{\f1\fs20 \u10003  Ver cualquier recibo emitido por las cajeras}
+\par
+{\f1\fs20 \u10003  Anular recibos con motivo documentado para auditor\'eda}
+\par
+{\f1\fs20 \u10003  Ejecutar cierre de caja diario y generar reportes}
+\par
+{\f1\fs20 \u10003  Configurar la tasa de cambio USD/VES diaria}
+\par
+{\f1\fs20 \u10003  Ver el cat\'e1logo de aranceles y tarifas}
+\par
+{\f1\fs20 \u10003  Registrar pagos (mismo acceso que Cajera)}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b\cf4 [NO PUEDE REALIZAR]}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 \u10007  Crear o eliminar usuarios del sistema}
+\par
+{\f1\fs20 \u10007  Asignar o modificar roles y permisos}
+\par
+{\f1\fs20 \u10007  Acceder a configuraci\'f3n avanzada del sistema}
+\par
+{\f1\fs20 \u10007  Eliminar registros permanentemente}
+\par
+{\f1\fs20 \u10007  Crear nuevos conceptos de aranceles}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 IMPORTANTE - Auditor\'eda: Cada acci\'f3n del Administrador queda registrada en el sistema con timestamp y usuario responsable. Las anulaciones siempre requieren justificaci\'f3n escrita expl\'edcita para mantener la integridad del registro financiero.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 2. INICIO DE SESI\'d3N}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb0\sa50
+{\f1\fs20 1. Ingresar a la URL del sistema CDNJ desde el navegador (Chrome, Firefox o Edge).}
+\par
+{\f1\fs20 2. Escribir usuario y contrase\'f1a de Administrador.}
+\par
+{\f1\fs20    [DEMO: admin / 123456]}
+\par
+{\f1\fs20 3. Verificar en la barra superior que aparezca la etiqueta [ADMINISTRADOR].}
+\par
+{\f1\fs20 4. El men\'fa lateral mostrar\'e1: Panel de Cobro, Supervisi\'f3n & Cierre y Config. Aranceles.}
+\par
+{\f1\fs20 5. Para ir al panel de supervisi\'f3n, clic en "Supervisi\'f3n & Cierre" en el men\'fa lateral.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf5 NOTA - Cambiador de Rol Demo: La barra superior incluye un selector r\'e1pido de roles para demostraciones. En producci\'f3n, cada usuario debe autenticarse con sus propias credenciales. No usar el cambiador en entorno de producci\'f3n real.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 3. PANEL DE SUPERVISI\'d3N Y CONTROL FINANCIERO}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 Este es el panel central del Administrador. Al acceder a "Supervisi\'f3n & Cierre" desde el men\'fa lateral, ver\'e1s:}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs22\b TARJETAS DE ESTAD\'cdSTICAS (3 indicadores):}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 - {\b Total Recaudado (USD):}\tab Suma de todas las transacciones completadas}
+\par
+{\f1\fs20 - {\b Total Recibos Emitidos:}\tab Cantidad de registros de cobro}
+\par
+{\f1\fs20 - {\b Recibos Anulados:}\tab\tab N\'famero de recibos anulados con motivo}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 INFORMACION: Las estad\'edsticas y el historial se actualizan cada vez que ingresas al panel. Para refrescar manualmente, navega a otra secci\'f3n y regresa.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 4. HISTORIAL AUDITADO DE PAGOS}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 La tabla muestra {\b todas las transacciones} registradas, incluyendo completadas y anuladas.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b COLUMNAS DE LA TABLA:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 {\b Nro. Recibo:}\tab\tab N\'famero correlativo \'fanico (ej. REC-000001)}
+\par
+{\f1\fs20 {\b Fecha y Hora:}\tab\tab Timestamp exacto del cobro}
+\par
+{\f1\fs20 {\b Estudiante / Grado:}\tab\tab Nombre completo y secci\'f3n del alumno}
+\par
+{\f1\fs20 {\b Monto ($ USD):}\tab\tab Total cobrado en d\'f3lares}
+\par
+{\f1\fs20 {\b Cajera / Usuario:}\tab\tab Nombre del usuario que proces\'f3 el cobro}
+\par
+{\f1\fs20 {\b Estado:}\tab\tab\tab [COMPLETADO] o [ANULADO]}
+\par
+{\f1\fs20 {\b Acciones:}\tab\tab\tab Botones Ver Recibo y (si aplica) Anular}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 NOTA: Los registros anulados aparecen con opacidad reducida para distinguirlos visualmente. No se eliminan del historial para preservar la trazabilidad de la auditor\'eda.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 5. CONSULTA DE RECIBOS}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb0\sa50
+{\f1\fs20 1. En el historial, ubica la fila del recibo a consultar (por n\'famero, fecha o alumno).}
+\par
+{\f1\fs20 2. Clic en el bot\'f3n "Ver Recibo" en la columna de acciones.}
+\par
+{\f1\fs20 3. El modal mostrar\'e1: n\'famero de recibo, fecha/hora, datos del alumno, conceptos,}
+\par
+{\f1\fs20    m\'e9todos de pago, montos y tasa de cambio aplicada.}
+\par
+{\f1\fs20 4. Para imprimir duplicado: Ctrl+P desde el modal del recibo.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 6. ANULACI\'d3N DE RECIBO CON AUDITOR\'cdA}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs18\cf4 ADVERTENCIA CRITICA: La anulaci\'f3n de recibos es una operaci\'f3n cr\'edtica. Al anular un recibo, el monto se revierte y las deudas del estudiante vuelven a estado PENDIENTE. Esta acci\'f3n queda permanentemente registrada con el motivo documentado.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PASOS PARA ANULAR UN RECIBO:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 1. En el historial, identificar el recibo [COMPLETADO] a anular.}
+\par
+{\f1\fs20    (Solo los recibos completados pueden anularse)}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 2. Clic en el bot\'f3n rojo "Anular" en la columna de acciones.}
+\par
+{\f1\fs20    (Solo visible para usuarios con permiso: payments:admin:void_receipt)}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 3. Leer el modal de confirmaci\'f3n (muestra el n\'famero de recibo y monto a revertir).}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 4. OBLIGATORIO: Escribir el MOTIVO EXPLICITO de anulaci\'f3n (m\'ednimo 5 caracteres).}
+\par
+{\f1\fs20    Ejemplos validos:}
+\par
+{\f1\fs20    - "Error en m\'e9todo de pago: se registr\'f3 Efectivo pero fue Zelle"}
+\par
+{\f1\fs20    - "Pago duplicado por error de la cajera turno tarde"}
+\par
+{\f1\fs20    - "Monto incorrecto ingresado, representante pag\'f3 $50 no $100"}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 5. Clic en "Confirmar Anulaci\'f3n". El recibo cambiara a estado [ANULADO].}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf5 EFECTO DE LA ANULACION: Las deudas asociadas vuelven a estado PENDIENTE. El representante deber\'e1 pagar nuevamente esos conceptos para que el alumno quede solvente.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 7. CIERRE DE CAJA DIARIO}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El {\b cierre de caja} consolida y registra todos los pagos del turno/d\'eda. Genera un reporte financiero con el detalle de lo recaudado por tipo de pago y moneda.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b CONTENIDO DEL REPORTE DE CIERRE:}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 - Efectivo USD en Caja: total de pagos en efectivo USD}
+\par
+{\f1\fs20 - Efectivo Moneda Local (VES): total de pagos en efectivo Bs.}
+\par
+{\f1\fs20 - Pagos Digitales USD: Zelle y transferencias en d\'f3lares}
+\par
+{\f1\fs20 - Pagos Digitales VES: Transferencias y Pago M\'f3vil en Bs.}
+\par
+{\f1\fs20 - Gran Total USD: suma consolidada en equivalente USD}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PASOS PARA REALIZAR EL CIERRE:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 1. Clic en "Cierre de Caja Diario" (bot\'f3n verde arriba a la derecha del panel).}
+\par
+{\f1\fs20 2. Revisar el resumen financiero en el modal (4 tarjetas + Gran Total).}
+\par
+{\f1\fs20 3. Agregar Observaciones del Cierre si es necesario.}
+\par
+{\f1\fs20 4. Clic en "Confirmar Cierre de Caja".}
+\par
+{\f1\fs20 5. El sistema generar\'e1 un n\'famero de cierre correlativo y registrara el reporte.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf5 CUANDO HACERLO: Realiza el cierre al final de cada turno o jornada laboral, antes de que la cajera abandone su puesto. Los cierres se acumulan hist\'f3ricamente para auditor\'eda financiera.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 8. CAT\'c1LOGO DE ARANCELES Y TARIFAS}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 Desde "Config. Aranceles" en el men\'fa lateral, el Administrador puede {\b consultar} todos los conceptos de cobro configurados en el sistema.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b INFORMACI\'d3N DE CADA ARANCEL:}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 - {\b C\'f3digo:}\tab\tab Identificador \'fanico del concepto (ej. MEN-OCT-2026)}
+\par
+{\f1\fs20 - {\b Nombre:}\tab\tab Descripci\'f3n del arancel}
+\par
+{\f1\fs20 - {\b Monto USD:}\tab\tab Precio oficial en d\'f3lares}
+\par
+{\f1\fs20 - {\b Equivalente VES:}\tab Calculado con la tasa del d\'eda vigente}
+\par
+{\f1\fs20 - {\b Tipo:}\tab\tab\tab [Recurrente] mensualidad o [\'danico] arancel puntual}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 NOTA: El Administrador puede CONSULTAR los aranceles. La creaci\'f3n o modificaci\'f3n de conceptos est\'e1 reservada para el rol SUPERADMIN.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 9. ACTUALIZACI\'d3N DE TASA DE CAMBIO}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 Funci\'f3n cr\'edtica: actualizar la tasa de cambio USD/VES {\b diariamente} antes de que la cajera comience a operar.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PASOS:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 1. Clic en "Config. Aranceles" en el men\'fa lateral izquierdo.}
+\par
+{\f1\fs20 2. Verificar la tasa actual en el campo "Tasa Actual (VES por 1.00 USD)".}
+\par
+{\f1\fs20 3. Ingresar la nueva tasa del BCV del d\'eda (usar punto como separador decimal).}
+\par
+{\f1\fs20    Ejemplo correcto: 38.75}
+\par
+{\f1\fs20 4. Clic en "Guardar Nueva Tasa".}
+\par
+{\f1\fs20 5. El sistema confirmar\'e1 la actualizaci\'f3n. Todos los nuevos cobros en VES usar\'e1n esta tasa.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf4 CRITICO: Actualiza la tasa CADA DIA antes de abrir caja. Una tasa incorrecta afectara todos los cobros en Bolivares del dia y generara discrepancias en el cierre de caja. Los pagos con tasa incorrecta deben anularse y reregistrarse.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 10. PERMISOS GRANULARES DEL PERFIL}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs22\b PERMISOS OTORGADOS AL ROL ADMINISTRADOR:}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 [OTORGADO] payments:cashier:create_payment}
+\par
+{\f1\fs20 [OTORGADO] payments:cashier:search_students}
+\par
+{\f1\fs20 [OTORGADO] payments:cashier:view_receipt}
+\par
+{\f1\fs20 [OTORGADO] payments:admin:view_history}
+\par
+{\f1\fs20 [OTORGADO] payments:admin:void_receipt}
+\par
+{\f1\fs20 [OTORGADO] payments:admin:close_box}
+\par
+{\f1\fs20 [OTORGADO] payments:config:manage_rates}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PERMISOS NO OTORGADOS (RESERVADOS PARA SUPERADMIN):}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 [DENEGADO] system:users:manage}
+\par
+{\f1\fs20 [DENEGADO] system:roles:assign}
+\par
+{\f1\fs20 [DENEGADO] payments:config:create_concepts}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 VER PERMISOS ACTIVOS: Clic en el boton [Permisos (N)] en la barra superior para ver la lista completa de permisos activos de tu sesi\'f3n actual.}
+\par}
+
+\page
+
+{\pard\sb400\sa200\qc
+{\f1\fs20\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+{\f1\fs18\cf10 CDNJ School Platform v1.0 | Manual de Usuario \endash{} Perfil Administrador}
+\par
+{\f1\fs18\cf10 \'a9 2026 \endash{} Todos los derechos reservados}
+\par}
+
+}

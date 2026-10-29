@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual de Usuario – Perfil Administrador | CDNJ School Platform</title>
+  <meta name="description" content="Manual de usuario completo para el perfil Administrador del sistema CDNJ School Platform. Historial, anulaciones, cierre de caja y supervisión financiera.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --bg2: #131b2e;
+      --border: rgba(255,255,255,0.08);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --green: #10b981;
+      --green-light: #34d399;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --glass: rgba(255,255,255,0.04);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+    .sidebar {
+      position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+      background: rgba(19, 27, 46, 0.95); border-right: 1px solid var(--border);
+      padding: 2rem 1.25rem; overflow-y: auto; z-index: 100;
+    }
+    .sidebar-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+    .logo-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #6366f1, #818cf8); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 4px 16px rgba(99,102,241,0.4); }
+    .logo-text h2 { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .logo-text span { font-size: 0.72rem; color: var(--muted); }
+    .sidebar-section { margin-bottom: 1.75rem; }
+    .sidebar-section-title { font-size: 0.7rem; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; }
+    .sidebar a { display: flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.85rem; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.2rem; transition: all 0.2s; }
+    .sidebar a:hover, .sidebar a.active { background: rgba(99,102,241,0.12); color: var(--accent-light); }
+    .sidebar a .num { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
+    .main { margin-left: 260px; }
+    .hero { background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(168,85,247,0.1) 50%, transparent 100%); border-bottom: 1px solid var(--border); padding: 4rem 4rem 3rem; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: -100px; right: -100px; width: 400px; height: 400px; background: radial-gradient(circle, rgba(99,102,241,0.1), transparent 70%); border-radius: 50%; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.85rem; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.35); border-radius: 9999px; font-size: 0.78rem; font-weight: 700; color: var(--accent-light); margin-bottom: 1.25rem; }
+    .hero h1 { font-size: 2.75rem; font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+    .hero h1 span { color: var(--accent-light); }
+    .hero p { color: var(--muted); font-size: 1.05rem; max-width: 600px; margin-bottom: 2rem; }
+    .hero-meta { display: flex; gap: 2rem; flex-wrap: wrap; }
+    .hero-meta-item { display: flex; flex-direction: column; gap: 0.2rem; }
+    .hero-meta-item .label { font-size: 0.72rem; color: #4b5563; font-weight: 600; text-transform: uppercase; }
+    .hero-meta-item .value { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .hero-meta-item .value.indigo { color: var(--accent-light); }
+    .content { padding: 3rem 4rem; max-width: 1000px; }
+    .section { margin-bottom: 4rem; scroll-margin-top: 2rem; }
+    .section-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.75rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .section-icon { width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; }
+    .icon-green { background: rgba(16,185,129,0.15); }
+    .icon-blue { background: rgba(99,102,241,0.15); }
+    .icon-orange { background: rgba(245,158,11,0.15); }
+    .icon-red { background: rgba(239,68,68,0.15); }
+    .icon-purple { background: rgba(168,85,247,0.15); }
+    .section-header h2 { font-size: 1.4rem; font-weight: 700; }
+    .section-header .section-num { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+    .card { background: var(--glass); border: 1px solid var(--border); border-radius: 14px; padding: 1.5rem; margin-bottom: 1.25rem; backdrop-filter: blur(8px); }
+    .card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card p { color: var(--muted); font-size: 0.9rem; }
+    .card.highlight { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06); }
+    .card.indigo { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.06); }
+    .card.danger { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+    .card.warning { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); }
+    .steps { display: flex; flex-direction: column; gap: 1rem; }
+    .step { display: flex; gap: 1.25rem; align-items: flex-start; }
+    .step-num { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #818cf8); display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 800; flex-shrink: 0; box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
+    .step-body h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .step-body p { font-size: 0.875rem; color: var(--muted); }
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: rgba(255,255,255,0.04); }
+    th { padding: 0.85rem 1rem; text-align: left; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+    td { padding: 0.85rem 1rem; font-size: 0.875rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 700; }
+    .badge-green { background: rgba(16,185,129,0.2); color: #34d399; }
+    .badge-red { background: rgba(239,68,68,0.2); color: #f87171; }
+    .badge-yellow { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .badge-blue { background: rgba(99,102,241,0.2); color: #818cf8; }
+    .badge-purple { background: rgba(168,85,247,0.2); color: #c084fc; }
+    .alert { display: flex; gap: 0.85rem; padding: 1rem 1.25rem; border-radius: 10px; margin: 1.25rem 0; font-size: 0.875rem; }
+    .alert-icon { font-size: 1.15rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .alert.alert-tip { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); }
+    .alert.alert-warn { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); }
+    .alert.alert-info { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); }
+    .alert.alert-danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); }
+    .alert strong { display: block; margin-bottom: 0.25rem; }
+    code { font-family: 'Courier New', monospace; background: rgba(255,255,255,0.08); padding: 0.15rem 0.45rem; border-radius: 4px; font-size: 0.82rem; color: #818cf8; }
+    .perms-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .perm-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.75rem; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); border-radius: 9999px; font-size: 0.78rem; font-weight: 600; color: #818cf8; }
+    .perm-chip.denied { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.2); color: #f87171; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--glass); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; text-align: center; }
+    .stat-card .stat-value { font-size: 2rem; font-weight: 800; margin: 0.25rem 0; }
+    .stat-card .stat-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+    @media print { .sidebar { display: none; } .main { margin-left: 0; } }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">👔</div>
+    <div class="logo-text">
+      <h2>CDNJ Modular</h2>
+      <span>Manual de Usuario</span>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Contenido</div>
+    <a href="#perfil"><span class="num">1</span> Perfil y Funciones</a>
+    <a href="#inicio"><span class="num">2</span> Inicio de Sesión</a>
+    <a href="#panel"><span class="num">3</span> Panel de Supervisión</a>
+    <a href="#historial"><span class="num">4</span> Historial de Pagos</a>
+    <a href="#recibos"><span class="num">5</span> Ver Recibos</a>
+    <a href="#anulacion"><span class="num">6</span> Anulación de Recibo</a>
+    <a href="#cierre"><span class="num">7</span> Cierre de Caja</a>
+    <a href="#aranceles"><span class="num">8</span> Config. Aranceles</a>
+    <a href="#tasa"><span class="num">9</span> Tasa de Cambio</a>
+    <a href="#permisos"><span class="num">10</span> Permisos</a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Otros Perfiles</div>
+    <a href="manual_cajera.html">💳 Cajera</a>
+    <a href="manual_superadmin.html">👑 Superadmin</a>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="hero">
+    <div class="hero-badge">👔 Perfil: ADMINISTRADOR</div>
+    <h1>Manual de Usuario<br><span>Administrador – Supervisión Financiera</span></h1>
+    <p>Guía completa para la supervisión del historial de pagos, anulación de recibos con auditoría, cierre de caja diario y configuración de aranceles en la plataforma CDNJ School Platform.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="label">Versión</span>
+        <span class="value">v1.0</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Usuario Demo</span>
+        <span class="value indigo">admin / 123456</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Rol del Sistema</span>
+        <span class="value">ADMINISTRADOR</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Responsable</span>
+        <span class="value">Lic. Ana Martínez</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- S1: Perfil -->
+    <div class="section" id="perfil">
+      <div class="section-header">
+        <div class="section-icon icon-blue">👔</div>
+        <div>
+          <div class="section-num">Sección 1</div>
+          <h2>Perfil y Responsabilidades</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El <strong style="color:var(--text)">Administrador</strong> es el responsable de la supervisión financiera del sistema. Tiene acceso completo al historial de pagos, puede anular recibos con justificación auditada, realizar el cierre de caja y gestionar los aranceles escolares.</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card indigo">
+          <h3>✅ Puede realizar</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--muted);">
+            <li>📊 Ver historial completo de transacciones</li>
+            <li>🧾 Ver cualquier recibo emitido</li>
+            <li>❌ Anular recibos con motivo documentado</li>
+            <li>📦 Ejecutar cierre de caja diario</li>
+            <li>⚙️ Configurar tasas de cambio diarias</li>
+            <li>📋 Ver catálogo de aranceles y tarifas</li>
+            <li>💳 Registrar pagos (mismo acceso que Cajera)</li>
+          </ul>
+        </div>
+        <div class="card danger">
+          <h3>❌ No puede realizar</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--muted);">
+            <li>🚫 Crear o eliminar usuarios del sistema</li>
+            <li>🚫 Asignar o modificar roles y permisos</li>
+            <li>🚫 Acceder a configuración avanzada del sistema</li>
+            <li>🚫 Eliminar registros permanentemente</li>
+            <li>🚫 Crear nuevos conceptos de aranceles</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div><strong>Rol Crítico en la Auditoría</strong> Cada acción del Administrador queda registrada en el sistema con timestamp y usuario responsable. Las anulaciones siempre requieren justificación escrita explícita para mantener la integridad del registro financiero.</div>
+      </div>
+    </div>
+
+    <!-- S2: Login -->
+    <div class="section" id="inicio">
+      <div class="section-header">
+        <div class="section-icon icon-blue">🔐</div>
+        <div>
+          <div class="section-num">Sección 2</div>
+          <h2>Inicio de Sesión</h2>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Acceder al Sistema</h4>
+            <p>Ingresa a la URL del sistema CDNJ desde tu navegador. Usa Chrome, Firefox o Edge actualizados.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Ingresar Credenciales de Administrador</h4>
+            <p>Escribe tu nombre de usuario y contraseña. Para el perfil demo: <code>admin</code> / <code>123456</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Verificar el Rol</h4>
+            <p>Confirma en la barra superior que tu nombre aparezca con la etiqueta <code>ADMINISTRADOR</code>. El menú lateral mostrará las secciones: <strong>Panel de Cobro, Supervisión & Cierre</strong> y <strong>Config. Aranceles</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Pantalla Principal</h4>
+            <p>Al iniciar sesión, el sistema abrirá el <strong>Panel de Cobro</strong> por defecto. Para ir al panel de supervisión, haz clic en <strong>"Supervisión & Cierre"</strong> en el menú lateral izquierdo.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <div><strong>Cambiador Rápido de Rol (Modo Demo)</strong> En la barra superior, existe un selector rápido de roles para entornos de demostración. En producción, cada usuario debe autenticarse con sus propias credenciales. No uses el cambiador de rol en un entorno de producción real.</div>
+      </div>
+    </div>
+
+    <!-- S3: Panel -->
+    <div class="section" id="panel">
+      <div class="section-header">
+        <div class="section-icon icon-blue">📊</div>
+        <div>
+          <div class="section-num">Sección 3</div>
+          <h2>Panel de Supervisión y Control Financiero</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">Este es el panel central del Administrador. Al acceder a <strong>Supervisión & Cierre</strong> desde el menú lateral, verás 3 tarjetas de estadísticas y la tabla completa del historial de transacciones.</p>
+
+      <div class="stat-grid">
+        <div class="stat-card" style="border-color: rgba(16,185,129,0.3);">
+          <div class="stat-label">Total Recaudado</div>
+          <div class="stat-value" style="color: #34d399;">$XXX.XX</div>
+          <div style="font-size:0.75rem; color: var(--muted);">Transacciones Completadas</div>
+        </div>
+        <div class="stat-card" style="border-color: rgba(99,102,241,0.3);">
+          <div class="stat-label">Recibos Emitidos</div>
+          <div class="stat-value" style="color: #818cf8;">XX</div>
+          <div style="font-size:0.75rem; color: var(--muted);">Registros de Cobro</div>
+        </div>
+        <div class="stat-card" style="border-color: rgba(239,68,68,0.3);">
+          <div class="stat-label">Recibos Anulados</div>
+          <div class="stat-value" style="color: #f87171;">XX</div>
+          <div style="font-size:0.75rem; color: var(--muted);">Con motivo documentado</div>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div><strong>Actualización en Tiempo Real:</strong> Las estadísticas y el historial se actualizan automáticamente cada vez que ingresas a este panel. Para refrescar los datos manualmente, navega a otra sección y regresa.</div>
+      </div>
+    </div>
+
+    <!-- S4: Historial -->
+    <div class="section" id="historial">
+      <div class="section-header">
+        <div class="section-icon icon-blue">📋</div>
+        <div>
+          <div class="section-num">Sección 4</div>
+          <h2>Historial Auditado de Pagos</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">La tabla de historial muestra <strong style="color:var(--text)">todas las transacciones</strong> registradas en el sistema, incluyendo las completadas y las anuladas.</p>
+
+      <div class="table-wrap" style="margin-bottom: 1.5rem;">
+        <table>
+          <thead>
+            <tr><th>Columna</th><th>Descripción</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Nro. Recibo</strong></td><td>Número correlativo único (ej. REC-000001). Se muestra en color índigo.</td></tr>
+            <tr><td><strong>Fecha y Hora</strong></td><td>Timestamp exacto de cuando se procesó el cobro.</td></tr>
+            <tr><td><strong>Estudiante / Grado</strong></td><td>Nombre completo del estudiante y su sección.</td></tr>
+            <tr><td><strong>Monto ($ USD)</strong></td><td>Total cobrado en dólares. Se muestra en color verde.</td></tr>
+            <tr><td><strong>Cajera / Usuario</strong></td><td>Nombre completo del usuario que procesó el cobro.</td></tr>
+            <tr><td><strong>Estado</strong></td><td><span class="badge badge-green">COMPLETADO</span> o <span class="badge badge-red">ANULADO</span></td></tr>
+            <tr><td><strong>Acciones</strong></td><td>Botones para Ver Recibo y (si aplica) Anular.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-tip">
+        <span class="alert-icon">💡</span>
+        <div><strong>Transacciones Anuladas:</strong> Los registros con estado ANULADO aparecen con opacidad reducida en la tabla (color atenuado) para distinguirlos visualmente de las transacciones válidas. No se eliminan del historial para preservar la trazabilidad.</div>
+      </div>
+    </div>
+
+    <!-- S5: Ver Recibos -->
+    <div class="section" id="recibos">
+      <div class="section-header">
+        <div class="section-icon icon-blue">🧾</div>
+        <div>
+          <div class="section-num">Sección 5</div>
+          <h2>Consulta de Recibos</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El Administrador puede ver el detalle completo de cualquier recibo emitido.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Localizar el Recibo en la Tabla</h4>
+            <p>En el historial de transacciones, ubica la fila del recibo que deseas consultar. Puedes identificarlo por el número de recibo, fecha o nombre del estudiante.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Clic en "Ver Recibo"</h4>
+            <p>En la columna de acciones, haz clic en el botón <strong>"👁 Ver Recibo"</strong>. Se abrirá una ventana emergente con el detalle completo del recibo.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Información del Recibo</h4>
+            <p>El modal mostrará: número de recibo, fecha/hora, datos del estudiante y representante, conceptos pagados, métodos de pago utilizados, montos por método, tasa de cambio aplicada y total en USD.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Imprimir si es necesario</h4>
+            <p>Si el representante solicita un duplicado del recibo, puedes usar <kbd style="background:rgba(255,255,255,0.1); padding: 0.1rem 0.4rem; border-radius:4px; font-size:0.8rem;">Ctrl+P</kbd> o la función de impresión del navegador desde el modal.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S6: Anulación -->
+    <div class="section" id="anulacion">
+      <div class="section-header">
+        <div class="section-icon icon-red">❌</div>
+        <div>
+          <div class="section-num">Sección 6</div>
+          <h2>Anulación de Recibo con Auditoría</h2>
+        </div>
+      </div>
+
+      <div class="alert alert-danger">
+        <span class="alert-icon">🚨</span>
+        <div><strong>Acción Sensible – Solo Administrador</strong> La anulación de recibos es una operación crítica. Al anular un recibo, el monto del pago se revierte y las deudas del estudiante vuelven a estado PENDIENTE. Esta acción queda permanentemente registrada en el sistema con el motivo documentado.</div>
+      </div>
+
+      <div class="steps" style="margin: 1.5rem 0;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Localizar el Recibo a Anular</h4>
+            <p>En el historial, identifica el recibo con estado <span class="badge badge-green">COMPLETADO</span> que necesita ser anulado. Solo los recibos completados pueden anularse; los ya anulados no muestran el botón de anulación.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Clic en "Anular"</h4>
+            <p>Haz clic en el botón rojo <strong>"🚫 Anular"</strong> en la columna de acciones. Este botón solo es visible para usuarios con el permiso <code>payments:admin:void_receipt</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Leer el Modal de Confirmación</h4>
+            <p>Aparecerá un modal de advertencia mostrando el número de recibo y el monto que será revertido. Lee cuidadosamente los datos antes de continuar.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>⚡ Escribir el Motivo de Anulación (OBLIGATORIO)</h4>
+            <p>En el campo de texto obligatorio, escribe el <strong>motivo explícito y detallado</strong> de la anulación. El sistema requiere un mínimo de 5 caracteres. Ejemplos válidos:</p>
+            <ul style="list-style: none; margin-top: 0.5rem; font-size: 0.83rem; color: var(--muted); display: flex; flex-direction: column; gap: 0.25rem;">
+              <li>📝 <em>"Error en método de pago: se registró Efectivo pero fue Zelle"</em></li>
+              <li>📝 <em>"Pago duplicado por error de la cajera turno tarde"</em></li>
+              <li>📝 <em>"Monto incorrecto ingresado, representante pagó $50 no $100"</em></li>
+            </ul>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Confirmar la Anulación</h4>
+            <p>Haz clic en <strong>"Confirmar Anulación"</strong>. El sistema procesará la reversión y mostrará un mensaje de confirmación. El recibo cambiará a estado <span class="badge badge-red">ANULADO</span> en el historial.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <div><strong>Efecto de la Anulación:</strong> Al anular un recibo, <strong>las deudas asociadas vuelven a estado PENDIENTE</strong> para ese estudiante. El representante deberá volver a pagar en caja esos conceptos para que queden solventes.</div>
+      </div>
+    </div>
+
+    <!-- S7: Cierre de Caja -->
+    <div class="section" id="cierre">
+      <div class="section-header">
+        <div class="section-icon icon-green">🧮</div>
+        <div>
+          <div class="section-num">Sección 7</div>
+          <h2>Cierre de Caja Diario</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El <strong style="color:var(--text)">cierre de caja</strong> es el proceso de consolidar y registrar todos los pagos del turno/día. Genera un reporte financiero con el detalle de lo recaudado por tipo de pago y moneda.</p>
+
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h3>💰 ¿Qué incluye el Reporte de Cierre?</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Categoría</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Efectivo USD en Caja</strong></td><td>Total de pagos en efectivo en dólares durante el período</td></tr>
+              <tr><td><strong>Efectivo Moneda Local (VES)</strong></td><td>Total de pagos en efectivo en Bolívares</td></tr>
+              <tr><td><strong>Pagos Digitales USD</strong></td><td>Zelle y transferencias en dólares</td></tr>
+              <tr><td><strong>Pagos Digitales VES</strong></td><td>Transferencias bancarias y Pago Móvil en Bs.</td></tr>
+              <tr><td><strong>Gran Total USD</strong></td><td>Suma consolidada de todo lo recaudado en equivalente USD</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Clic en "Cierre de Caja Diario"</h4>
+            <p>En el panel de supervisión, haz clic en el botón verde <strong>"🧮 Cierre de Caja Diario"</strong> ubicado en la parte superior derecha. El sistema cargará el resumen financiero del período actual.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Revisar el Resumen del Cierre</h4>
+            <p>El modal de cierre mostrará 4 tarjetas con los montos desglosados por tipo de pago y el Gran Total Consolidado en USD. Verifica que los montos sean coherentes con lo reportado por la(s) cajera(s).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Agregar Observaciones (Opcional)</h4>
+            <p>En el campo de <strong>Observaciones del Cierre</strong>, puedes agregar notas adicionales para el reporte financiero (ej. incidencias del día, diferencias de caja, novedades).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Confirmar el Cierre</h4>
+            <p>Haz clic en <strong>"Confirmar Cierre de Caja"</strong>. El sistema generará un número de cierre correlativo y registrará el reporte. Un mensaje de confirmación mostrará el número de cierre asignado.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <div><strong>Momento del Cierre:</strong> Realiza el cierre de caja al final de cada turno o jornada laboral, antes de que la cajera abandone su puesto. Los cierres se acumulan históricamente y quedan registrados para auditoría financiera.</div>
+      </div>
+    </div>
+
+    <!-- S8: Aranceles -->
+    <div class="section" id="aranceles">
+      <div class="section-header">
+        <div class="section-icon icon-orange">⚙️</div>
+        <div>
+          <div class="section-num">Sección 8</div>
+          <h2>Catálogo de Aranceles y Tarifas</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">Desde la sección <strong>Config. Aranceles</strong> en el menú lateral, el Administrador puede consultar todos los conceptos de cobro configurados en el sistema.</p>
+
+      <div class="table-wrap" style="margin-bottom: 1.5rem;">
+        <table>
+          <thead><tr><th>Campo</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Código</strong></td><td>Identificador único del concepto (ej. MEN-OCT-2026)</td></tr>
+            <tr><td><strong>Nombre del Concepto</strong></td><td>Descripción del arancel (ej. Mensualidad Octubre 2026)</td></tr>
+            <tr><td><strong>Monto USD</strong></td><td>Precio oficial en dólares americanos</td></tr>
+            <tr><td><strong>Equivalente Actual</strong></td><td>Monto calculado en VES con la tasa del día vigente</td></tr>
+            <tr><td><strong>Tipo</strong></td><td><span class="badge badge-blue">Recurrente</span> (mensualidad) o <span class="badge badge-yellow">Único</span> (arancel de inscripción)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div><strong>Modificación de Conceptos:</strong> El Administrador puede <strong>consultar</strong> los aranceles. La creación o modificación de conceptos de cobro está reservada para el rol <strong>SUPERADMIN</strong>. Si necesitas ajustar tarifas, contacta al Superadmin.</div>
+      </div>
+    </div>
+
+    <!-- S9: Tasa -->
+    <div class="section" id="tasa">
+      <div class="section-header">
+        <div class="section-icon icon-green">💱</div>
+        <div>
+          <div class="section-num">Sección 9</div>
+          <h2>Actualización de Tasa de Cambio</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">Una de las funciones críticas del Administrador es <strong style="color:var(--text)">actualizar la tasa de cambio USD/VES diariamente</strong> antes de que la cajera comience a operar. Esta tasa se usa para todos los cobros en Bolívares del día.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Ir a "Config. Aranceles"</h4>
+            <p>Desde el menú lateral, haz clic en <strong>"⚙️ Config. Aranceles"</strong>. Verás la sección "Tasa de Cambio de Referencia Diaria (USD / Moneda Local)".</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Verificar la Tasa Actual</h4>
+            <p>El campo de texto mostrará la tasa de cambio actualmente configurada (VES por 1 USD). Verifica que sea la tasa oficial del BCV del día.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Ingresar la Nueva Tasa</h4>
+            <p>Borra el valor actual y escribe la nueva tasa de cambio con dos decimales (ej. <code>38.75</code>). Usa el punto (.) como separador decimal, no coma.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Guardar la Nueva Tasa</h4>
+            <p>Haz clic en <strong>"Guardar Nueva Tasa"</strong>. El sistema actualizará la tasa y mostrará el mensaje de confirmación en verde. A partir de ese momento, todos los nuevos cobros en VES usarán esta tasa.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-danger">
+        <span class="alert-icon">🚨</span>
+        <div><strong>¡Importante!</strong> Actualiza la tasa de cambio <strong>cada día antes de abrir caja</strong>. Una tasa incorrecta afectará todos los cobros del día en Bolívares y generará discrepancias en el cierre de caja. Los pagos procesados con tasa incorrecta deben ser anulados y reregistrados.</div>
+      </div>
+    </div>
+
+    <!-- S10: Permisos -->
+    <div class="section" id="permisos">
+      <div class="section-header">
+        <div class="section-icon icon-blue">🔑</div>
+        <div>
+          <div class="section-num">Sección 10</div>
+          <h2>Permisos Granulares del Perfil</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El Administrador tiene un conjunto ampliado de permisos que incluye todos los de la Cajera más sus funciones exclusivas de supervisión.</p>
+
+      <div style="margin-bottom: 1.5rem;">
+        <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem;">PERMISOS OTORGADOS AL ROL ADMINISTRADOR:</p>
+        <div class="perms-grid">
+          <span class="perm-chip">✅ payments:cashier:create_payment</span>
+          <span class="perm-chip">✅ payments:cashier:search_students</span>
+          <span class="perm-chip">✅ payments:cashier:view_receipt</span>
+          <span class="perm-chip">✅ payments:admin:view_history</span>
+          <span class="perm-chip">✅ payments:admin:void_receipt</span>
+          <span class="perm-chip">✅ payments:admin:close_box</span>
+          <span class="perm-chip">✅ payments:config:manage_rates</span>
+        </div>
+      </div>
+
+      <div>
+        <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem;">PERMISOS NO OTORGADOS (RESERVADOS PARA SUPERADMIN):</p>
+        <div class="perms-grid">
+          <span class="perm-chip denied">❌ system:users:manage</span>
+          <span class="perm-chip denied">❌ system:roles:assign</span>
+          <span class="perm-chip denied">❌ payments:config:create_concepts</span>
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="margin-top: 1.5rem;">
+        <span class="alert-icon">ℹ️</span>
+        <div><strong>Ver mis Permisos Actuales:</strong> Haz clic en el botón <code>🔑 Permisos (N)</code> en la barra superior para ver la lista completa de permisos activos de tu sesión actual.</div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="border-top: 1px solid var(--border); padding-top: 2rem; margin-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; color: var(--muted); font-size: 0.8rem;">
+      <div>
+        <strong style="color:var(--text)">CDNJ School Platform v1.0</strong><br>
+        Manual de Usuario – Perfil: Administrador<br>
+        © 2026 – Todos los derechos reservados
+      </div>
+      <div style="text-align: right;">
+        <a href="manual_cajera.html" style="color: #34d399; text-decoration: none; margin-left: 1rem;">💳 Manual Cajera</a>
+        <a href="manual_superadmin.html" style="color: #c084fc; text-decoration: none; margin-left: 1rem;">👑 Manual Superadmin</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,428 @@
+{\rtf1\ansi\ansicpg1252\deff0\deflang3082
+{\fonttbl{\f0\froman\fcharset0 Times New Roman;}{\f1\fswiss\fcharset0 Calibri;}{\f2\fmodern\fcharset0 Courier New;}}
+{\colortbl;\red11\green15\blue25;\red16\green185\blue129;\red99\green102\blue241;\red239\green68\blue68;\red245\green158\blue11;\red52\green211\blue153;\red129\green140\blue248;\red249\green250\blue251;\red17\green24\blue39;\red107\green114\blue128;\red168\green85\blue247;\red192\green132\blue252;}
+\widowctrl\hyphauto
+\paperw12240\paperh15840\margl1440\margr1440\margt1440\margb1440
+
+{\pard\sb400\sa200\qc
+{\f1\fs48\b\cf11 CDNJ School Platform}
+\par}
+
+{\pard\sb0\sa100\qc
+{\f1\fs20\cf10 Sistema de Gesti\'f3n Escolar | Versi\'f3n 1.0}
+\par}
+
+{\pard\sb0\sa400\qc
+{\f1\fs36\b\cf11 MANUAL DE USUARIO}
+\par}
+
+{\pard\sb0\sa100\qc
+{\f1\fs32\b PERFIL: SUPERADMIN}
+\par}
+
+{\pard\sb0\sa100\qc
+{\f1\fs22\b\cf12 NIVEL DE ACCESO TOTAL (*) \endash{} CONTROL IRRESTRICTO}
+\par}
+
+{\pard\sb0\sa400\qc
+{\f1\fs20\cf10 \'a9 2026 CDNJ School Platform | Todos los derechos reservados}
+\par}
+
+\pard\sb200\sa200{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb400\sa100
+{\f1\fs24\b\cf9 INFORMACI\'d3N DEL DOCUMENTO}
+\par}
+
+{\pard\sb0\sa100
+{\f1\fs20\b Perfil:}\tab{\f1\fs20 SUPERADMIN}
+\par
+{\f1\fs20\b Usuario Demo:}\tab{\f1\fs20 superadmin / 123456}
+\par
+{\f1\fs20\b Nivel de Acceso:}\tab{\f1\fs20 TOTAL (*) - Wildcard}
+\par
+{\f1\fs20\b Permiso Global:}\tab{\f1\fs20 * (Todos los permisos del sistema)}
+\par
+{\f1\fs20\b Versi\'f3n del Sistema:}\tab{\f1\fs20 v1.0}
+\par
+{\f1\fs20\b Fecha de Emisi\'f3n:}\tab{\f1\fs20 Octubre 2026}
+\par}
+
+\pard\sb200\sa200{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb400\sa100
+{\f1\fs28\b\cf9 \'cdNDICE DE CONTENIDO}
+\par}
+
+{\pard\sb0\sa100
+{\f1\fs20 1.\tab Perfil Superadmin}
+\par
+{\f1\fs20 2.\tab Acceso y Seguridad de la Cuenta}
+\par
+{\f1\fs20 3.\tab El Permiso Wildcard (*) \endash{} Acceso Total}
+\par
+{\f1\fs20 4.\tab Matriz de Roles y Permisos del Sistema}
+\par
+{\f1\fs20 5.\tab Todas las Funciones Disponibles}
+\par
+{\f1\fs20 6.\tab Funciones Demo del Sistema}
+\par
+{\f1\fs20 7.\tab Buenas Pr\'e1cticas para el Superadmin}
+\par
+{\f1\fs20 8.\tab Arquitectura RBAC del Sistema}
+\par
+{\f1\fs20 9.\tab M\'f3dulos Futuros del Sistema}
+\par}
+
+\page
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 1. PERFIL SUPERADMIN}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El {\b Superadmin} es el nivel m\'e1s alto de autoridad en el sistema CDNJ. Su funci\'f3n es la configuraci\'f3n global de la plataforma, gesti\'f3n de usuarios y roles, y supervisi\'f3n de todos los m\'f3dulos del sistema.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf11 ACCESO IRRESTRICTO TOTAL: El perfil SUPERADMIN tiene acceso impl\'edcito a TODAS las funcionalidades del sistema mediante el permiso wildcard (*). No existen restricciones de acceso para este perfil. Act\'faa con m\'e1xima responsabilidad.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PUEDE REALIZAR TODO LO SIGUIENTE:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 \u10003  Registrar cobros y pagos (funciones de Cajera)}
+\par
+{\f1\fs20 \u10003  Ver historial completo de transacciones (funciones de Admin)}
+\par
+{\f1\fs20 \u10003  Anular cualquier recibo con motivo documentado}
+\par
+{\f1\fs20 \u10003  Ejecutar cierres de caja diarios}
+\par
+{\f1\fs20 \u10003  Configurar tasas de cambio USD/VES}
+\par
+{\f1\fs20 \u10003  Gestionar cat\'e1logo de aranceles (crear, modificar, desactivar)}
+\par
+{\f1\fs20 \u10003  Crear y gestionar usuarios del sistema}
+\par
+{\f1\fs20 \u10003  Asignar y modificar roles y permisos}
+\par
+{\f1\fs20 \u10003  Acceder a logs y auditor\'eda del sistema}
+\par
+{\f1\fs20 \u10003  Configurar par\'e1metros globales del sistema}
+\par
+{\f1\fs20 \u10003  Habilitar m\'f3dulos futuros (Calificaciones, Matr\'edculas, Asistencia)}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 2. ACCESO Y SEGURIDAD DE LA CUENTA}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs18\cf4 ADVERTENCIA CRITICA: La cuenta SUPERADMIN tiene acceso TOTAL al sistema. Su compromiso puede resultar en la perdida o modificacion de TODOS los datos financieros del colegio. Protege las credenciales con maxima prioridad.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b MEDIDAS DE SEGURIDAD OBLIGATORIAS:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 1. {\b Contrase\'f1a robusta:} M\'ednimo 16 caracteres, combinando may\'fasculas, min\'fasculas,}
+\par
+{\f1\fs20    n\'fameros y s\'edmbolos. Cambiarla cada 90 d\'edas como m\'ednimo.}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 2. {\b Acceso exclusivo y personal:} Nunca compartir credenciales de Superadmin}
+\par
+{\f1\fs20    con nadie, ni siquiera con administradores. Si alguien m\'e1s necesita capacidades}
+\par
+{\f1\fs20    elevadas, crear cuenta propia con permisos apropiados.}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 3. {\b Cerrar sesi\'f3n siempre:} Al terminar cualquier tarea, cerrar sesi\'f3n con el}
+\par
+{\f1\fs20    bot\'f3n LogOut. Nunca dejar la sesi\'f3n de Superadmin abierta sin supervisi\'f3n.}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 4. {\b Monitorear logs:} Revisar peri\'f3dicamente las acciones de todos los usuarios}
+\par
+{\f1\fs20    para detectar actividades sospechosas.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 3. EL PERMISO WILDCARD (*) \endash{} ACCESO TOTAL}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El sistema CDNJ implementa RBAC granular. El Superadmin posee el permiso especial {\b *} (wildcard) que bypasea todas las verificaciones de permisos del sistema.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PERMISO SUPERADMIN: * (Control Total Impl\'edcito)}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs20 Este \'fanico permiso equivale a tener {\b todos los permisos posibles del sistema}, presentes y futuros. Al agregar nuevos m\'f3dulos, el Superadmin tendr\'e1 acceso autom\'e1tico sin configuraci\'f3n adicional.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 IMPLEMENTACION TECNICA: La verificaci\'f3n de permisos primero comprueba si el usuario tiene rol SUPERADMIN o el permiso *. Si es as\'ed, retorna true inmediatamente sin evaluar permisos espec\'edficos.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 4. MATRIZ DE ROLES Y PERMISOS DEL SISTEMA}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs22\b COMPARATIVA DE ACCESOS POR ROL:}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 FUNCI\'d3N\tab\tab\tab\tab\tab CAJERA\tab ADMIN\tab SUPERADMIN}
+\par
+{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+{\f1\fs20 Registrar Pagos\tab\tab\tab\tab [SI]\tab [SI]\tab [*]}
+\par
+{\f1\fs20 Buscar Alumnos y Deudas\tab\tab [SI]\tab [SI]\tab [*]}
+\par
+{\f1\fs20 Ver e Imprimir Recibos\tab\tab [SI]\tab [SI]\tab [*]}
+\par
+{\f1\fs20 Ver Historial Transacciones\tab\tab [NO]\tab [SI]\tab [*]}
+\par
+{\f1\fs20 Anular Recibos\tab\tab\tab [NO]\tab [SI]\tab [*]}
+\par
+{\f1\fs20 Ejecutar Cierre de Caja\tab\tab [NO]\tab [SI]\tab [*]}
+\par
+{\f1\fs20 Actualizar Tasa de Cambio\tab\tab [NO]\tab [SI]\tab [*]}
+\par
+{\f1\fs20 Ver Cat\'e1logo de Aranceles\tab\tab [NO]\tab [SI]\tab [*]}
+\par
+{\f1\fs20 Crear/Modificar Aranceles\tab\tab [NO]\tab [NO]\tab [*]}
+\par
+{\f1\fs20 Gestionar Usuarios\tab\tab\tab [NO]\tab [NO]\tab [*]}
+\par
+{\f1\fs20 Asignar Roles y Permisos\tab\tab [NO]\tab [NO]\tab [*]}
+\par
+{\f1\fs20 Acceso a Logs del Sistema\tab\tab [NO]\tab [NO]\tab [*]}
+\par
+{\f1\fs20 Habilitar M\'f3dulos Futuros\tab\tab [NO]\tab [NO]\tab [*]}
+\par}
+
+{\pard\sb100\sa100
+{\f1\fs16\cf10 Leyenda: [SI]=Permitido | [NO]=Denegado | [*]=Acceso por permiso wildcard}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 5. TODAS LAS FUNCIONES DISPONIBLES}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs22\b GESTI\'d3N DE USUARIOS (Exclusivo Superadmin):}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 - Crear nuevos usuarios en el sistema}
+\par
+{\f1\fs20 - Editar datos de usuarios existentes}
+\par
+{\f1\fs20 - Bloquear o desactivar usuarios}
+\par
+{\f1\fs20 - Resetear contrase\'f1as}
+\par
+{\f1\fs20 - Ver todos los usuarios activos}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b GESTI\'d3N DE ROLES Y PERMISOS (Exclusivo Superadmin):}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 - Crear nuevos roles personalizados}
+\par
+{\f1\fs20 - Asignar permisos espec\'edficos a roles}
+\par
+{\f1\fs20 - Cambiar el rol de cualquier usuario}
+\par
+{\f1\fs20 - Gestionar el cat\'e1logo de permisos}
+\par
+{\f1\fs20 - Auditar permisos de cualquier usuario}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b CONFIGURACI\'d3N FINANCIERA GLOBAL (Exclusivo Superadmin):}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 - Crear nuevos conceptos de aranceles}
+\par
+{\f1\fs20 - Modificar tarifas existentes}
+\par
+{\f1\fs20 - Desactivar conceptos obsoletos}
+\par
+{\f1\fs20 - Configurar per\'eedodos de pago}
+\par
+{\f1\fs20 - Gestionar tasas de cambio hist\'f3ricas}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 6. FUNCIONES DEMO DEL SISTEMA}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs22\b CAMBIADOR R\'c1PIDO DE ROLES (Demo):}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 En la barra de navegaci\'f3n superior existen botones: Cajera, Admin y Superadmin para cambiar de perfil con un solo clic. \'datil para demostraciones del RBAC del sistema.}
+\par}
+
+{\pard\sb100\sa100
+{\f1\fs18\cf5 SOLO PARA DEMO: En producci\'f3n real, este cambiador deber\'eda ser deshabilitado. Cada usuario debe autenticarse con sus propias credenciales.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b ACCESO 1-CLICK EN LOGIN:}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 La pantalla de login incluye tarjetas de acceso r\'e1pido para cada perfil:}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 - Cajera:\tab\tab cajera / 123456}
+\par
+{\f1\fs20 - Administrador:\tab admin / 123456}
+\par
+{\f1\fs20 - Superadmin:\tab\tab superadmin / 123456}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 7. BUENAS PR\'c1CTICAS PARA EL SUPERADMIN}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs22\b PRINCIPIO DE M\'cdNIMO PRIVILEGIO:}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Aunque puedes otorgar cualquier permiso, asigna a cada usuario solo los permisos estrictamente necesarios. Evita crear muchos usuarios con rol Administrador innecesariamente.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b DOCUMENTAR CAMBIOS DE CONFIGURACI\'d3N:}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Cada vez que modifiques configuraciones cr\'edticas (aranceles, roles, permisos), documenta el cambio con fecha, motivo y usuario responsable. Mantener registro externo para auditor\'edas.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PROBAR EN ENTORNO DEMO PRIMERO:}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Si vas a realizar cambios importantes al sistema, verifica su funcionamiento en el entorno demo antes de aplicarlos en producci\'f3n.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b REVISI\'d3N PERI\'d3DICA DE USUARIOS:}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Revisi\'f3n mensual de todos los usuarios activos. Desactivar inmediatamente cuentas de empleados que ya no trabajan en la instituci\'f3n.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 8. ARQUITECTURA RBAC DEL SISTEMA}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El sistema CDNJ implementa RBAC Granular. Cada funci\'f3n est\'e1 protegida por un permiso con el formato: {\b modulo:submodulo:accion}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b CAT\'c1LOGO COMPLETO DE PERMISOS:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 {\b Permiso}\tab\tab\tab\tab {\b M\'f3dulo}\tab {\b Funci\'f3n}}
+\par
+{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+{\f1\fs18 payments:cashier:create_payment\tab Cobros\tab\tab Registrar nuevos pagos}
+\par
+{\f1\fs18 payments:cashier:search_students\tab Cobros\tab\tab Buscar alumnos y deudas}
+\par
+{\f1\fs18 payments:cashier:view_receipt\tab\tab Cobros\tab\tab Ver e imprimir recibos}
+\par
+{\f1\fs18 payments:admin:view_history\tab\tab Admin\tab\tab Historial de transacciones}
+\par
+{\f1\fs18 payments:admin:void_receipt\tab\tab Admin\tab\tab Anular recibos con motivo}
+\par
+{\f1\fs18 payments:admin:close_box\tab\tab Admin\tab\tab Cierre de caja diario}
+\par
+{\f1\fs18 payments:config:manage_rates\tab\tab Config\tab\tab Tasa de cambio y aranceles}
+\par
+{\f1\fs18 *\tab\tab\tab\tab\tab GLOBAL\tab\tab TODOS los permisos (Superadmin)}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 EXTENSION: Al agregar nuevos modulos (Calificaciones, Matriculas, Asistencia), se crearan nuevos permisos con el mismo esquema. El Superadmin tendra acceso automatico por su permiso wildcard (*).}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf11 9. M\'d3DULOS FUTUROS DEL SISTEMA}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs22\b M\'d3DULO DE CALIFICACIONES [En Desarrollo]}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Gesti\'f3n de notas, boletines y promedios estudiantiles por per\'eedodo. Incluir\'e1 control de acceso diferenciado para Docentes, Coordinadores y Directivos.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b M\'d3DULO DE MATR\'cdCULAS [Planificado]}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Proceso completo de inscripci\'f3n y reinscripci\'f3n de alumnos, asignaci\'f3n de secciones y control de cupos por grado/nivel.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b M\'d3DULO DE ASISTENCIA [Planificado]}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Control de asistencia diaria, reportes de inasistencias y notificaci\'f3n a representantes. Vista diferenciada por docente y directivo.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf11 RESPONSABILIDAD: Como Superadmin, ser\'e1s responsable de habilitar y configurar cada nuevo modulo. Asegurate de crear los permisos apropiados y asignarlos a los roles correctos antes de la activacion en produccion.}
+\par}
+
+\page
+
+{\pard\sb400\sa200\qc
+{\f1\fs20\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+{\f1\fs18\cf10 CDNJ School Platform v1.0 | Manual de Usuario \endash{} Perfil Superadmin}
+\par
+{\f1\fs18\cf10 \'a9 2026 \endash{} Todos los derechos reservados}
+\par}
+
+}

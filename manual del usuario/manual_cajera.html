@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manual de Usuario – Perfil Cajera | CDNJ School Platform</title>
+  <meta name="description" content="Manual de usuario completo para el perfil Cajera del sistema CDNJ School Platform. Guía de operaciones de cobro, búsqueda de estudiantes y emisión de recibos.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --bg2: #131b2e;
+      --border: rgba(255,255,255,0.08);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --accent: #10b981;
+      --accent2: #6366f1;
+      --accent3: #a855f7;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --glass: rgba(255,255,255,0.04);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    /* SIDEBAR / NAV */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 260px;
+      height: 100vh;
+      background: rgba(19, 27, 46, 0.95);
+      border-right: 1px solid var(--border);
+      padding: 2rem 1.25rem;
+      overflow-y: auto;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.4);
+    }
+    .logo-text h2 { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .logo-text span { font-size: 0.72rem; color: var(--muted); }
+    .sidebar-section { margin-bottom: 1.75rem; }
+    .sidebar-section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.75rem;
+    }
+    .sidebar a {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0.85rem;
+      border-radius: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 0.2rem;
+      transition: all 0.2s;
+    }
+    .sidebar a:hover, .sidebar a.active {
+      background: rgba(16,185,129,0.12);
+      color: var(--accent);
+    }
+    .sidebar a .num {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* MAIN CONTENT */
+    .main { margin-left: 260px; }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(99,102,241,0.1) 50%, transparent 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 4rem 4rem 3rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -100px; right: -100px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(16,185,129,0.1), transparent 70%);
+      border-radius: 50%;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.85rem;
+      background: rgba(16,185,129,0.15);
+      border: 1px solid rgba(16,185,129,0.35);
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 1.25rem;
+    }
+    .hero h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 1rem;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p { color: var(--muted); font-size: 1.05rem; max-width: 600px; margin-bottom: 2rem; }
+    .hero-meta {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+    }
+    .hero-meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .hero-meta-item .label { font-size: 0.72rem; color: #4b5563; font-weight: 600; text-transform: uppercase; }
+    .hero-meta-item .value { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .hero-meta-item .value.green { color: var(--accent); }
+
+    /* CONTENT */
+    .content { padding: 3rem 4rem; max-width: 1000px; }
+
+    /* SECTION */
+    .section { margin-bottom: 4rem; scroll-margin-top: 2rem; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-icon {
+      width: 46px; height: 46px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.35rem;
+      flex-shrink: 0;
+    }
+    .icon-green { background: rgba(16,185,129,0.15); }
+    .icon-blue { background: rgba(99,102,241,0.15); }
+    .icon-orange { background: rgba(245,158,11,0.15); }
+    .icon-red { background: rgba(239,68,68,0.15); }
+    .section-header h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+    .section-header .section-num {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    /* CARDS */
+    .card {
+      background: var(--glass);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      backdrop-filter: blur(8px);
+    }
+    .card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .card p { color: var(--muted); font-size: 0.9rem; }
+    .card.highlight { border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.06); }
+    .card.warning { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.06); }
+    .card.danger { border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+    .card.info { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.06); }
+
+    /* STEPS */
+    .steps { display: flex; flex-direction: column; gap: 1rem; }
+    .step {
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 800;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+    }
+    .step-body h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .step-body p { font-size: 0.875rem; color: var(--muted); }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: rgba(255,255,255,0.04); }
+    th {
+      padding: 0.85rem 1rem;
+      text-align: left;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 0.85rem 1rem;
+      font-size: 0.875rem;
+      border-bottom: 1px solid var(--border);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    td .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .badge-green { background: rgba(16,185,129,0.2); color: #34d399; }
+    .badge-red { background: rgba(239,68,68,0.2); color: #f87171; }
+    .badge-yellow { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .badge-blue { background: rgba(99,102,241,0.2); color: #818cf8; }
+
+    /* ALERT BOXES */
+    .alert {
+      display: flex;
+      gap: 0.85rem;
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      margin: 1.25rem 0;
+      font-size: 0.875rem;
+    }
+    .alert-icon { font-size: 1.15rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .alert.alert-tip { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); }
+    .alert.alert-warn { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.25); }
+    .alert.alert-info { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); }
+    .alert.alert-danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); }
+    .alert strong { display: block; margin-bottom: 0.25rem; }
+
+    /* CODE */
+    code {
+      font-family: 'Courier New', monospace;
+      background: rgba(255,255,255,0.08);
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      font-size: 0.82rem;
+      color: #818cf8;
+    }
+
+    /* PERMS GRID */
+    .perms-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .perm-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.3rem 0.75rem;
+      background: rgba(16,185,129,0.12);
+      border: 1px solid rgba(16,185,129,0.25);
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #34d399;
+    }
+    .perm-chip.denied {
+      background: rgba(239,68,68,0.1);
+      border-color: rgba(239,68,68,0.2);
+      color: #f87171;
+    }
+
+    /* PRINT */
+    @media print {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .hero { background: #f9fafb; color: #111; }
+      body { background: #fff; color: #111; }
+    }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">🎓</div>
+    <div class="logo-text">
+      <h2>CDNJ Modular</h2>
+      <span>Manual de Usuario</span>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Contenido</div>
+    <a href="#perfil"><span class="num">1</span> Perfil y Acceso</a>
+    <a href="#inicio"><span class="num">2</span> Inicio de Sesión</a>
+    <a href="#panel"><span class="num">3</span> Panel de Cobro</a>
+    <a href="#busqueda"><span class="num">4</span> Búsqueda de Alumno</a>
+    <a href="#deudas"><span class="num">5</span> Gestión de Deudas</a>
+    <a href="#pago"><span class="num">6</span> Registro de Pago</a>
+    <a href="#recibo"><span class="num">7</span> Emisión de Recibo</a>
+    <a href="#multimoneda"><span class="num">8</span> Cobro Multimoneda</a>
+    <a href="#errores"><span class="num">9</span> Errores Comunes</a>
+    <a href="#permisos"><span class="num">10</span> Permisos</a>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">Otros Perfiles</div>
+    <a href="manual_administrador.html">👔 Administrador</a>
+    <a href="manual_superadmin.html">👑 Superadmin</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">💳 Perfil: CAJERA</div>
+    <h1>Manual de Usuario<br><span>Cajera – Panel de Cobro</span></h1>
+    <p>Guía operativa completa para el registro de pagos de mensualidades, búsqueda de estudiantes y emisión de recibos en la plataforma CDNJ School Platform.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <span class="label">Versión</span>
+        <span class="value">v1.0</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Usuario Demo</span>
+        <span class="value green">cajera / 123456</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Rol del Sistema</span>
+        <span class="value">CAJERA</span>
+      </div>
+      <div class="hero-meta-item">
+        <span class="label">Responsable</span>
+        <span class="value">María González</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- SECCIÓN 1: Perfil -->
+    <div class="section" id="perfil">
+      <div class="section-header">
+        <div class="section-icon icon-green">💳</div>
+        <div>
+          <div class="section-num">Sección 1</div>
+          <h2>Perfil y Responsabilidades</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">La <strong style="color:var(--text)">Cajera</strong> es la usuaria principal encargada del cobro diario de mensualidades y aranceles estudiantiles. Su trabajo es el primer eslabón de la cadena financiera del colegio.</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card highlight">
+          <h3>✅ Puede realizar</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--muted);">
+            <li>🔍 Buscar estudiantes y representantes</li>
+            <li>📋 Ver deudas pendientes del alumno</li>
+            <li>💰 Registrar pagos en USD y VES</li>
+            <li>🧾 Emitir recibos oficiales</li>
+            <li>📱 Registrar pagos multimoneda</li>
+          </ul>
+        </div>
+        <div class="card danger">
+          <h3>❌ No puede realizar</h3>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.875rem; color: var(--muted);">
+            <li>🚫 Ver historial completo de transacciones</li>
+            <li>🚫 Anular recibos emitidos</li>
+            <li>🚫 Realizar cierre de caja</li>
+            <li>🚫 Modificar aranceles o tarifas</li>
+            <li>🚫 Cambiar tasa de cambio USD/VES</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div><strong>RBAC – Control por Rol</strong> El sistema CDNJ implementa control de acceso granular (RBAC). Cada acción está vinculada a un permiso específico. La Cajera solo verá las opciones de menú que le corresponden según su rol.</div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 2: Inicio de Sesión -->
+    <div class="section" id="inicio">
+      <div class="section-header">
+        <div class="section-icon icon-blue">🔐</div>
+        <div>
+          <div class="section-num">Sección 2</div>
+          <h2>Inicio de Sesión</h2>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Abrir el Sistema</h4>
+            <p>Accede desde el navegador web a la URL del sistema CDNJ. La plataforma funciona en Google Chrome, Firefox o Edge en su versión más reciente.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Ingresar Credenciales</h4>
+            <p>En la pantalla de login, escribe tu <strong>Usuario</strong> y <strong>Contraseña</strong>. Las credenciales son asignadas por el Administrador del sistema.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Verificar tu Rol</h4>
+            <p>Una vez dentro, verifica en la barra superior derecha que aparezca tu nombre y la etiqueta <code>CAJERA</code>. Si el rol no es correcto, cierra sesión y notifica al administrador.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Pantalla Principal</h4>
+            <p>Al iniciar sesión correctamente, serás redirigida automáticamente al <strong>Panel de Cobro</strong>, que es tu área de trabajo principal.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <div><strong>Seguridad de Contraseña</strong> Nunca compartas tu contraseña con otros usuarios. Cada acción del sistema queda registrada con tu usuario. Si sospechas que alguien conoce tu contraseña, notifica al administrador inmediatamente.</div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 3: Panel de Cobro -->
+    <div class="section" id="panel">
+      <div class="section-header">
+        <div class="section-icon icon-green">💳</div>
+        <div>
+          <div class="section-num">Sección 3</div>
+          <h2>Panel de Cobro – Visión General</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El Panel de Cobro es la pantalla principal de la Cajera. Está dividido en <strong style="color:var(--text)">dos columnas</strong>:</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+        <div class="card info">
+          <h3>🔍 Columna Izquierda</h3>
+          <p><strong>Búsqueda y Selección del Alumno.</strong> Aquí buscas al estudiante por nombre, cédula o código. Una vez encontrado, sus datos se muestran en tarjetas detalladas del estudiante y su representante legal.</p>
+        </div>
+        <div class="card highlight">
+          <h3>💰 Columna Derecha</h3>
+          <p><strong>Deudas y Formulario de Cobro.</strong> Una vez seleccionado el alumno, aquí aparecen todas sus deudas pendientes. Seleccionas cuáles pagar y configuras el método de pago multimoneda.</p>
+        </div>
+      </div>
+
+      <div class="alert alert-tip">
+        <span class="alert-icon">💡</span>
+        <div><strong>Flujo de trabajo recomendado:</strong> Buscar alumno → Seleccionar alumno → Verificar deudas → Seleccionar conceptos a pagar → Ingresar método de pago → Confirmar cobro → Imprimir recibo.</div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 4: Búsqueda -->
+    <div class="section" id="busqueda">
+      <div class="section-header">
+        <div class="section-icon icon-blue">🔍</div>
+        <div>
+          <div class="section-num">Sección 4</div>
+          <h2>Búsqueda de Alumno o Representante</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El sistema ofrece <strong style="color:var(--text)">4 modos de búsqueda</strong> para localizar al estudiante de forma rápida y precisa:</p>
+
+      <div class="table-wrap" style="margin-bottom: 1.5rem;">
+        <table>
+          <thead>
+            <tr>
+              <th>Modo</th>
+              <th>Botón</th>
+              <th>Formato</th>
+              <th>Ejemplo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>🔍 Todos</strong></td>
+              <td><span class="badge badge-blue">Todos</span></td>
+              <td>Texto libre: nombre, apellido, cédula</td>
+              <td><code>María López</code></td>
+            </tr>
+            <tr>
+              <td><strong>🪪 Cód. Representante</strong></td>
+              <td><span class="badge badge-green">Cod. Rep (REP-)</span></td>
+              <td>Prefijo REP- + 3 dígitos</td>
+              <td><code>REP-015</code></td>
+            </tr>
+            <tr>
+              <td><strong>🎓 Cód. Alumno</strong></td>
+              <td><span class="badge badge-blue">Cod. Alumno (EST-)</span></td>
+              <td>Prefijo EST-AÑO- + 4 dígitos</td>
+              <td><code>EST-2026-0041</code></td>
+            </tr>
+            <tr>
+              <td><strong>📄 Cédula</strong></td>
+              <td><span class="badge badge-yellow">Cédula (V-)</span></td>
+              <td>V- o CE- + número de cédula</td>
+              <td><code>V-12345678</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Seleccionar el Modo de Búsqueda</h4>
+            <p>Haz clic en uno de los 4 botones de modo (Todos, Cod. Rep, Cod. Alumno, Cédula). El campo de búsqueda se ajustará automáticamente al formato correspondiente.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Ingresar el Término de Búsqueda</h4>
+            <p>Escribe el nombre, código o cédula en el campo de texto. Para los modos REP-, EST- y V-, el sistema agrega automáticamente el prefijo correspondiente.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Presionar "Buscar"</h4>
+            <p>Haz clic en el botón <strong>Buscar</strong> o presiona la tecla <kbd style="background:rgba(255,255,255,0.1); padding: 0.1rem 0.4rem; border-radius:4px; font-size:0.8rem;">Enter</kbd>. Los resultados aparecerán listados debajo del campo de búsqueda.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Seleccionar el Alumno</h4>
+            <p>En la lista de resultados, haz clic sobre el nombre del estudiante correcto. La tarjeta mostrará el nombre completo, grado, código y número de deudas pendientes. Al seleccionarlo, el sistema cargará automáticamente sus deudas activas.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-tip">
+        <span class="alert-icon">💡</span>
+        <div><strong>Tip Profesional:</strong> Si el representante viene a pagar, puedes buscar directamente por el código del representante (REP-XXX). El sistema mostrará todos los estudiantes asociados a ese representante.</div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 5: Gestión de Deudas -->
+    <div class="section" id="deudas">
+      <div class="section-header">
+        <div class="section-icon icon-orange">📋</div>
+        <div>
+          <div class="section-num">Sección 5</div>
+          <h2>Gestión de Deudas Pendientes</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">Al seleccionar un estudiante, el sistema carga automáticamente todas sus deudas pendientes. Cada deuda muestra el concepto, fecha de vencimiento, monto en USD y equivalente en Bolívares.</p>
+
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h3>📌 Información de Cada Deuda</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Campo</th><th>Descripción</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Concepto</strong></td><td>Nombre del arancel o mensualidad (ej. Mensualidad Octubre)</td></tr>
+              <tr><td><strong>Fecha de Vencimiento</strong></td><td>Fecha límite de pago configurada por el administrador</td></tr>
+              <tr><td><strong>Monto USD</strong></td><td>Monto oficial en dólares americanos</td></tr>
+              <tr><td><strong>Equivalente VES</strong></td><td>Calculado automáticamente con la tasa del día</td></tr>
+              <tr><td><strong>Checkbox</strong></td><td>Para seleccionar/deseleccionar esta deuda del cobro</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Revisar las Deudas Mostradas</h4>
+            <p>Por defecto, <strong>todas las deudas pendientes vienen preseleccionadas</strong> con un checkmark verde. Revisa la lista con el representante para confirmar qué conceptos se van a cancelar.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Seleccionar/Deseleccionar Conceptos</h4>
+            <p>Haz clic en el checkbox de cada deuda para incluirla o excluirla del cobro actual. El total se actualiza automáticamente al modificar la selección.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Verificar el Total</h4>
+            <p>En el recuadro de resumen (bajo la lista) se muestra el <strong>Total Seleccionado</strong> en USD y su equivalente en VES con la tasa del día.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <div><strong>Importante:</strong> Si el estudiante aparece sin deudas pendientes, el sistema mostrará el mensaje <em>"El estudiante no tiene deudas pendientes acumuladas"</em>. En este caso, no hay cobro que realizar para ese alumno.</div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 6: Registro de Pago -->
+    <div class="section" id="pago">
+      <div class="section-header">
+        <div class="section-icon icon-green">💵</div>
+        <div>
+          <div class="section-num">Sección 6</div>
+          <h2>Registro del Pago</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">Una vez seleccionadas las deudas, debes configurar cómo el representante va a cancelar. El sistema acepta múltiples métodos de pago simultáneos.</p>
+
+      <div class="card" style="margin-bottom: 1.5rem;">
+        <h3>🏦 Métodos de Pago Disponibles</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Método</th><th>Moneda Típica</th><th>Requiere Referencia</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>💵 Efectivo USD</td><td>USD ($)</td><td>No (opcional)</td></tr>
+              <tr><td>💴 Efectivo Moneda Local</td><td>VES (Bs.)</td><td>No (opcional)</td></tr>
+              <tr><td>🏦 Transferencia Bancaria</td><td>VES o USD</td><td>✅ Sí (número de referencia)</td></tr>
+              <tr><td>💳 Punto de Venta / Tarjeta</td><td>VES</td><td>✅ Sí (número de lote)</td></tr>
+              <tr><td>📱 Zelle</td><td>USD</td><td>✅ Sí (número de confirmación)</td></tr>
+              <tr><td>📲 Pago Móvil</td><td>VES</td><td>✅ Sí (número de referencia)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Seleccionar Método de Pago Principal</h4>
+            <p>En la sección <em>"2. Desglose de Pago (Multimoneda)"</em>, el primer método viene pre-cargado como <strong>Efectivo USD</strong>. Cambia el tipo de método en el menú desplegable si es necesario.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Ingresar Monto y Moneda</h4>
+            <p>Selecciona la moneda (USD o VES) e ingresa el monto recibido. Si el pago es en VES, el sistema convertirá automáticamente a USD usando la tasa del día.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Ingresar Referencia (si aplica)</h4>
+            <p>Para pagos digitales (transferencia, Zelle, Pago Móvil, tarjeta), ingresa el número de referencia o confirmación en el campo correspondiente. Este dato queda registrado en la auditoría.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Agregar Métodos Adicionales (si aplica)</h4>
+            <p>Si el representante paga con más de un método (ej. parte en efectivo y parte por Zelle), haz clic en el botón <strong>"+ Añadir Método"</strong> y configura el segundo método de pago.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 7: Emisión de Recibo -->
+    <div class="section" id="recibo">
+      <div class="section-header">
+        <div class="section-icon icon-green">🧾</div>
+        <div>
+          <div class="section-num">Sección 7</div>
+          <h2>Confirmación y Emisión del Recibo</h2>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Verificar el Total Final</h4>
+            <p>Antes de confirmar, verifica que el total a cobrar mostrado en el botón coincide con lo que va a pagar el representante: <em>"Confirmar y Emitir Recibo ($XX.XX USD)"</em>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Presionar "Confirmar y Emitir Recibo"</h4>
+            <p>Haz clic en el botón verde. El sistema procesará el pago y generará automáticamente un número de recibo único y correlativo.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Modal del Recibo</h4>
+            <p>Aparecerá una ventana emergente con el <strong>recibo oficial</strong> que incluye: número de recibo, fecha y hora, datos del alumno, conceptos pagados, métodos de pago y monto total.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Imprimir o Entregar el Recibo</h4>
+            <p>Usa la opción de impresión del navegador (Ctrl+P) para imprimir el recibo y entregarlo al representante como comprobante oficial de pago.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-tip">
+        <span class="alert-icon">💡</span>
+        <div><strong>Mensaje de Éxito:</strong> Al registrar el pago correctamente, verás el mensaje verde: <em>"Pago registrado exitosamente. Recibo: REC-XXXXXX"</em>. Anota el número de recibo para referencia.</div>
+      </div>
+
+      <div class="alert alert-danger">
+        <span class="alert-icon">🚨</span>
+        <div><strong>Error en el cobro:</strong> Si aparece un mensaje en rojo, no intentes el cobro nuevamente sin leer el mensaje de error. Puede tratarse de una deuda ya pagada, un error de conexión o datos incorrectos. Notifica al administrador si el error persiste.</div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 8: Multimoneda -->
+    <div class="section" id="multimoneda">
+      <div class="section-header">
+        <div class="section-icon icon-orange">🌐</div>
+        <div>
+          <div class="section-num">Sección 8</div>
+          <h2>Cobro Multimoneda</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El sistema CDNJ permite registrar pagos en <strong style="color:var(--text)">múltiples divisas y métodos simultáneamente</strong>. Esto es especialmente útil cuando el representante paga parte en efectivo y parte por transferencia.</p>
+
+      <div class="card info" style="margin-bottom: 1.5rem;">
+        <h3>⚡ Ejemplo Práctico – Pago Mixto</h3>
+        <p style="margin-bottom: 0.75rem;">El representante cancela una deuda de <strong>$150 USD</strong> de la siguiente manera:</p>
+        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.875rem; color: var(--muted);">
+          <li>• Método 1: <strong style="color:#34d399">Efectivo USD → $100.00 USD</strong></li>
+          <li>• Método 2: <strong style="color:#818cf8">Zelle → $50.00 USD</strong> (Ref: ZELLE-928371)</li>
+          <li>• Total ingresado: <strong style="color:#34d399">$150.00 USD ✓</strong></li>
+        </ul>
+      </div>
+
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <div><strong>Conversión de Moneda:</strong> Cuando registras un monto en VES (Bolívares), el sistema lo convierte automáticamente a USD usando la <strong>tasa de cambio del día</strong> configurada por el Administrador. Siempre verifica que la tasa mostrada sea la correcta antes de procesar el pago.</div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 9: Errores Comunes -->
+    <div class="section" id="errores">
+      <div class="section-header">
+        <div class="section-icon icon-red">⚠️</div>
+        <div>
+          <div class="section-num">Sección 9</div>
+          <h2>Errores Comunes y Soluciones</h2>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Error / Situación</th><th>Causa Probable</th><th>Solución</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-red">No se encuentran resultados</span></td>
+              <td>Nombre mal escrito o alumno no registrado</td>
+              <td>Verificar ortografía. Intentar con cédula o código. Contactar al administrador.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-red">Debe seleccionar al menos un concepto</span></td>
+              <td>Intentó procesar sin marcar ninguna deuda</td>
+              <td>Marcar con ✓ al menos una deuda de la lista.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-yellow">Sin deudas pendientes</span></td>
+              <td>El alumno está solvente</td>
+              <td>No hay cobro que realizar. Informar al representante.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-red">Error de conexión</span></td>
+              <td>Sin acceso al servidor</td>
+              <td>Verificar la conexión a internet. Reintentar en 30 segundos.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-red">Acceso Restringido (RBAC)</span></td>
+              <td>Intenta acceder a una sección sin permisos</td>
+              <td>Esa función es exclusiva del Administrador. Solicitar asistencia.</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-yellow">Tasa de cambio incorrecta</span></td>
+              <td>El Administrador no ha actualizado la tasa del día</td>
+              <td>Notificar al Administrador para que actualice la tasa antes de procesar cobros en VES.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 10: Permisos -->
+    <div class="section" id="permisos">
+      <div class="section-header">
+        <div class="section-icon icon-blue">🔑</div>
+        <div>
+          <div class="section-num">Sección 10</div>
+          <h2>Permisos Granulares del Perfil</h2>
+        </div>
+      </div>
+
+      <p style="color: var(--muted); margin-bottom: 1.5rem;">El sistema asigna permisos específicos a cada rol. Puedes ver tus permisos activos en cualquier momento haciendo clic en el botón <code>🔑 Permisos</code> en la barra superior.</p>
+
+      <div style="margin-bottom: 1.5rem;">
+        <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem;">PERMISOS OTORGADOS AL ROL CAJERA:</p>
+        <div class="perms-grid">
+          <span class="perm-chip">✅ payments:cashier:create_payment</span>
+          <span class="perm-chip">✅ payments:cashier:search_students</span>
+          <span class="perm-chip">✅ payments:cashier:view_receipt</span>
+        </div>
+      </div>
+
+      <div>
+        <p style="font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem;">PERMISOS NO OTORGADOS (ACCESO DENEGADO):</p>
+        <div class="perms-grid">
+          <span class="perm-chip denied">❌ payments:admin:view_history</span>
+          <span class="perm-chip denied">❌ payments:admin:void_receipt</span>
+          <span class="perm-chip denied">❌ payments:admin:close_box</span>
+          <span class="perm-chip denied">❌ payments:config:manage_rates</span>
+        </div>
+      </div>
+
+      <div class="alert alert-info" style="margin-top: 1.5rem;">
+        <span class="alert-icon">ℹ️</span>
+        <div><strong>¿Necesitas más permisos?</strong> Si tu trabajo requiere acceder a funciones adicionales, solicita al Administrador o Superadmin que ajuste tu perfil de permisos. Las modificaciones de permisos solo pueden hacerlas usuarios con rol ADMIN o SUPERADMIN.</div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div style="border-top: 1px solid var(--border); padding-top: 2rem; margin-top: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: gap; color: var(--muted); font-size: 0.8rem;">
+      <div>
+        <strong style="color:var(--text)">CDNJ School Platform v1.0</strong><br>
+        Manual de Usuario – Perfil: Cajera<br>
+        © 2026 – Todos los derechos reservados
+      </div>
+      <div style="text-align: right;">
+        <a href="manual_administrador.html" style="color: var(--accent2); text-decoration: none; margin-left: 1rem;">👔 Manual Administrador</a>
+        <a href="manual_superadmin.html" style="color: var(--accent3); text-decoration: none; margin-left: 1rem;">👑 Manual Superadmin</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

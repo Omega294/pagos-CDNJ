@@ -1,0 +1,476 @@
+{\rtf1\ansi\ansicpg1252\deff0\deflang3082
+{\fonttbl{\f0\froman\fcharset0 Times New Roman;}{\f1\fswiss\fcharset0 Calibri;}{\f2\fmodern\fcharset0 Courier New;}}
+{\colortbl;\red11\green15\blue25;\red16\green185\blue129;\red99\green102\blue241;\red239\green68\blue68;\red245\green158\blue11;\red52\green211\blue153;\red129\green140\blue248;\red249\green250\blue251;\red17\green24\blue39;\red107\green114\blue128;}
+\widowctrl\hyphauto
+\paperw12240\paperh15840\margl1440\margr1440\margt1440\margb1440
+
+{\pard\sb400\sa200\qc
+{\f1\fs48\b\cf3 CDNJ School Platform}
+\par}
+
+{\pard\sb0\sa100\qc
+{\f1\fs20\cf10 Sistema de Gesti\'f3n Escolar | Versi\'f3n 1.0}
+\par}
+
+{\pard\sb0\sa400\qc
+{\f1\fs36\b\cf2 MANUAL DE USUARIO}
+\par}
+
+{\pard\sb0\sa100\qc
+{\f1\fs32\b PERFIL: CAJERA}
+\par}
+
+{\pard\sb0\sa400\qc
+{\f1\fs20\cf10 \'a9 2026 CDNJ School Platform | Todos los derechos reservados}
+\par}
+
+\pard\sb200\sa200{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb400\sa100
+{\f1\fs24\b\cf9 INFORMACI\'d3N DEL DOCUMENTO}
+\par}
+
+{\pard\sb0\sa100
+{\f1\fs20\b Perfil:}\tab{\f1\fs20 CAJERA}
+\par
+{\f1\fs20\b Usuario Demo:}\tab{\f1\fs20 cajera / 123456}
+\par
+{\f1\fs20\b Representante:}\tab{\f1\fs20 Mar\'eda Gonz\'e1lez}
+\par
+{\f1\fs20\b Versi\'f3n del Sistema:}\tab{\f1\fs20 v1.0}
+\par
+{\f1\fs20\b Fecha de Emisi\'f3n:}\tab{\f1\fs20 Octubre 2026}
+\par}
+
+\pard\sb200\sa200{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb400\sa100
+{\f1\fs28\b\cf9 \'cdNDICE DE CONTENIDO}
+\par}
+
+{\pard\sb0\sa100
+{\f1\fs20 1.\tab Perfil y Responsabilidades}
+\par
+{\f1\fs20 2.\tab Inicio de Sesi\'f3n}
+\par
+{\f1\fs20 3.\tab Panel de Cobro - Visi\'f3n General}
+\par
+{\f1\fs20 4.\tab B\'fasqueda de Alumno o Representante}
+\par
+{\f1\fs20 5.\tab Gesti\'f3n de Deudas Pendientes}
+\par
+{\f1\fs20 6.\tab Registro del Pago}
+\par
+{\f1\fs20 7.\tab Confirmaci\'f3n y Emisi\'f3n del Recibo}
+\par
+{\f1\fs20 8.\tab Cobro Multimoneda}
+\par
+{\f1\fs20 9.\tab Errores Comunes y Soluciones}
+\par
+{\f1\fs20 10.\tab Permisos Granulares del Perfil}
+\par}
+
+\page
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 1. PERFIL Y RESPONSABILIDADES}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 La {\b Cajera} es la usuaria principal encargada del cobro diario de mensualidades y aranceles estudiantiles. Su trabajo es el primer eslab\'f3n de la cadena financiera del colegio.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b\cf2 [PUEDE REALIZAR]}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 \u10003  Buscar estudiantes y representantes por nombre, c\'e9dula o c\'f3digo}
+\par
+{\f1\fs20 \u10003  Ver deudas pendientes del alumno seleccionado}
+\par
+{\f1\fs20 \u10003  Registrar pagos en d\'f3lares (USD) y bol\'edvares (VES)}
+\par
+{\f1\fs20 \u10003  Emitir recibos oficiales numerados y correlativos}
+\par
+{\f1\fs20 \u10003  Registrar pagos con m\'faltiples m\'e9todos simult\'e1neamente}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b\cf4 [NO PUEDE REALIZAR]}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 \u10007  Ver el historial completo de transacciones del sistema}
+\par
+{\f1\fs20 \u10007  Anular recibos emitidos}
+\par
+{\f1\fs20 \u10007  Realizar el cierre de caja}
+\par
+{\f1\fs20 \u10007  Modificar aranceles o tarifas}
+\par
+{\f1\fs20 \u10007  Cambiar la tasa de cambio USD/VES}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 NOTA - Control RBAC: El sistema CDNJ implementa control de acceso granular por roles (RBAC). Cada acci\'f3n est\'e1 vinculada a un permiso espec\'edfico. La Cajera solo ver\'e1 las opciones de men\'fa que le corresponden seg\'fan su rol asignado.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 2. INICIO DE SESI\'d3N}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs22\b\cf9 Paso 1: Abrir el Sistema}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Accede desde el navegador web a la URL del sistema CDNJ. La plataforma funciona en Google Chrome, Firefox o Edge en su versi\'f3n m\'e1s reciente.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b\cf9 Paso 2: Ingresar Credenciales}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 En la pantalla de login, escribe tu {\b Usuario} y {\b Contrase\'f1a}. Las credenciales son asignadas por el Administrador del sistema.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b\cf9 Paso 3: Verificar tu Rol}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Una vez dentro, verifica en la barra superior derecha que aparezca tu nombre y la etiqueta [CAJERA]. Si el rol no es correcto, cierra sesi\'f3n y notifica al administrador.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b\cf9 Paso 4: Pantalla Principal}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Al iniciar sesi\'f3n correctamente, ser\'e1s redirigida autom\'e1ticamente al {\b Panel de Cobro}, que es tu \'e1rea de trabajo principal.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf5 ADVERTENCIA - Seguridad: Nunca compartas tu contrase\'f1a con otros usuarios. Cada acci\'f3n del sistema queda registrada con tu nombre de usuario. Si sospechas que alguien conoce tu contrase\'f1a, notifica al administrador de inmediato.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 3. PANEL DE COBRO \endash{} VISI\'d3N GENERAL}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El Panel de Cobro es la pantalla principal de la Cajera. Est\'e1 dividido en {\b dos columnas}:}
+\par}
+
+{\pard\sb100\sa100
+{\f1\fs22\b COLUMNA IZQUIERDA: B\'fasqueda y Selecci\'f3n del Alumno}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Aqu\'ed buscas al estudiante por nombre, c\'e9dula o c\'f3digo. Una vez encontrado, sus datos se muestran en tarjetas detalladas del estudiante y su representante legal.}
+\par}
+
+{\pard\sb100\sa100
+{\f1\fs22\b COLUMNA DERECHA: Deudas y Formulario de Cobro}
+\par}
+{\pard\sb0\sa100
+{\f1\fs20 Una vez seleccionado el alumno, aqu\'ed aparecen todas sus deudas pendientes. Seleccionas cu\'e1les pagar y configuras el m\'e9todo de pago multimoneda.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf2 CONSEJO - Flujo de Trabajo Recomendado: Buscar alumno -> Seleccionar alumno -> Verificar deudas -> Seleccionar conceptos a pagar -> Ingresar m\'e9todo de pago -> Confirmar cobro -> Imprimir recibo.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 4. B\'daSOUEDA DE ALUMNO O REPRESENTANTE}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El sistema ofrece {\b 4 modos de b\'fasqueda} para localizar al estudiante de forma r\'e1pida y precisa:}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs22\b MODOS DE B\'daSOUEDA:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 {\b Modo "Todos":}\tab Busca por texto libre: nombre, apellido, c\'e9dula}
+\par
+{\f1\fs20 \tab Ejemplo: "Mar\'eda L\'f3pez"}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 {\b Modo "Cod. Representante (REP-)":}\tab Formato: REP- + 3 d\'edgitos}
+\par
+{\f1\fs20 \tab Ejemplo: REP-015}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 {\b Modo "Cod. Alumno (EST-)":}\tab Formato: EST-A\'d1O- + 4 d\'edgitos}
+\par
+{\f1\fs20 \tab Ejemplo: EST-2026-0041}
+\par}
+
+{\pard\sb100\sa50
+{\f1\fs20 {\b Modo "C\'e9dula (V-)":}\tab Formato: V- o CE- + n\'famero}
+\par
+{\f1\fs20 \tab Ejemplo: V-12345678}
+\par}
+
+{\pard\sb300\sa100
+{\f1\fs22\b PASOS PARA BUSCAR:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 1. Selecciona el modo de b\'fasqueda haciendo clic en el bot\'f3n correspondiente.}
+\par
+{\f1\fs20 2. Escribe el nombre, c\'f3digo o c\'e9dula en el campo de texto.}
+\par
+{\f1\fs20 3. Presiona el bot\'f3n "Buscar" o la tecla Enter.}
+\par
+{\f1\fs20 4. En la lista de resultados, haz clic sobre el nombre del estudiante correcto.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf2 CONSEJO: Si el representante viene a pagar, puedes buscar directamente por el c\'f3digo del representante (REP-XXX). El sistema mostrar\'e1 todos los estudiantes asociados a ese representante.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 5. GESTI\'d3N DE DEUDAS PENDIENTES}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 Al seleccionar un estudiante, el sistema carga autom\'e1ticamente todas sus deudas pendientes. Cada deuda muestra el concepto, fecha de vencimiento, monto en USD y equivalente en Bol\'edvares.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b INFORMACI\'d3N DE CADA DEUDA:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 {\b Concepto:}\tab\tab Nombre del arancel o mensualidad}
+\par
+{\f1\fs20 {\b Fecha Vencimiento:}\tab Fecha l\'edmite de pago}
+\par
+{\f1\fs20 {\b Monto USD:}\tab\tab Precio oficial en d\'f3lares americanos}
+\par
+{\f1\fs20 {\b Equivalente VES:}\tab Calculado con la tasa del d\'eda}
+\par
+{\f1\fs20 {\b Checkbox:}\tab\tab Para seleccionar/deseleccionar la deuda}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PASOS:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 1. Revisar la lista de deudas con el representante.}
+\par
+{\f1\fs20    (Por defecto TODAS vienen preseleccionadas)}
+\par
+{\f1\fs20 2. Hacer clic en el checkbox de cada deuda para incluir o excluir del cobro.}
+\par
+{\f1\fs20 3. Verificar el Total en el recuadro de resumen (bajo la lista).}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf5 ADVERTENCIA: Si el estudiante aparece sin deudas, el sistema mostrara el mensaje "El estudiante no tiene deudas pendientes acumuladas". En este caso no hay cobro que realizar.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 6. REGISTRO DEL PAGO}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 Una vez seleccionadas las deudas, debes configurar c\'f3mo el representante va a cancelar. El sistema acepta m\'faltiples m\'e9todos de pago simult\'e1neos.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b M\'c9TODOS DE PAGO DISPONIBLES:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 - Efectivo USD\tab\tab (Moneda: USD)}
+\par
+{\f1\fs20 - Efectivo Moneda Local\tab (Moneda: VES)}
+\par
+{\f1\fs20 - Transferencia Bancaria\tab (Moneda: VES o USD) - REQUIERE REFERENCIA}
+\par
+{\f1\fs20 - Punto de Venta/Tarjeta\tab (Moneda: VES) - REQUIERE NUMERO DE LOTE}
+\par
+{\f1\fs20 - Zelle\tab\tab\tab (Moneda: USD) - REQUIERE CONFIRMACION}
+\par
+{\f1\fs20 - Pago M\'f3vil\tab\tab (Moneda: VES) - REQUIERE REFERENCIA}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PASOS PARA REGISTRAR EL PAGO:}
+\par}
+
+{\pard\sb0\sa50
+{\f1\fs20 1. En la secci\'f3n "2. Desglose de Pago (Multimoneda)", seleccionar el m\'e9todo en el men\'fa desplegable.}
+\par
+{\f1\fs20 2. Seleccionar la moneda (USD o VES) e ingresar el monto recibido.}
+\par
+{\f1\fs20 3. Para pagos digitales, ingresar el n\'famero de referencia o confirmaci\'f3n.}
+\par
+{\f1\fs20 4. Si hay m\'e1s de un m\'e9todo de pago, clic en "+ A\'f1adir M\'e9todo" para agregar otro.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 7. CONFIRMACI\'d3N Y EMISI\'d3N DEL RECIBO}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb0\sa50
+{\f1\fs20 1. Verificar el total final mostrado en el bot\'f3n de confirmaci\'f3n.}
+\par
+{\f1\fs20 2. Clic en "Confirmar y Emitir Recibo ($XX.XX USD)".}
+\par
+{\f1\fs20 3. El sistema procesar\'e1 el pago y mostrar\'e1 el recibo en una ventana emergente.}
+\par
+{\f1\fs20 4. Usar Ctrl+P para imprimir el recibo y entregarlo al representante.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf2 EXITO: Al registrar correctamente, ver\'e1s el mensaje verde: "Pago registrado exitosamente. Recibo: REC-XXXXXX". Anota el n\'famero de recibo para referencia.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf4 ERROR: Si aparece mensaje en rojo, NO reintentes el cobro sin leer el error. Puede tratarse de deuda ya pagada o error de conexi\'f3n. Notifica al administrador si el error persiste.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 8. COBRO MULTIMONEDA}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El sistema CDNJ permite registrar pagos en m\'faltiples divisas y m\'e9todos simult\'e1neamente.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b EJEMPLO PR\'c1CTICO \endash{} Pago Mixto:}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 Deuda total: $150.00 USD}
+\par
+{\f1\fs20 - M\'e9todo 1: Efectivo USD -> $100.00 USD}
+\par
+{\f1\fs20 - M\'e9todo 2: Zelle -> $50.00 USD (Ref: ZELLE-928371)}
+\par
+{\f1\fs20 - Total ingresado: $150.00 USD [OK]}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf5 IMPORTANTE - Conversi\'f3n de Moneda: Cuando registras un monto en VES, el sistema lo convierte a USD usando la tasa de cambio del d\'eda configurada por el Administrador. Siempre verifica que la tasa mostrada sea la correcta antes de procesar pagos en VES.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 9. ERRORES COMUNES Y SOLUCIONES}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa50
+{\f1\fs22\b [ERROR] No se encuentran resultados}
+\par
+{\f1\fs20 {\b Causa:} Nombre mal escrito o alumno no registrado.}
+\par
+{\f1\fs20 {\b Soluci\'f3n:} Verificar ortograf\'eda. Intentar con c\'e9dula o c\'f3digo. Contactar al administrador.}
+\par}
+
+{\pard\sb200\sa50
+{\f1\fs22\b [ERROR] Debe seleccionar al menos un concepto}
+\par
+{\f1\fs20 {\b Causa:} Intent\'f3 procesar sin marcar ninguna deuda.}
+\par
+{\f1\fs20 {\b Soluci\'f3n:} Marcar con [v] al menos una deuda de la lista antes de confirmar.}
+\par}
+
+{\pard\sb200\sa50
+{\f1\fs22\b [AVISO] Sin deudas pendientes}
+\par
+{\f1\fs20 {\b Causa:} El alumno est\'e1 solvente con todos sus pagos al d\'eda.}
+\par
+{\f1\fs20 {\b Soluci\'f3n:} No hay cobro que realizar. Informar al representante.}
+\par}
+
+{\pard\sb200\sa50
+{\f1\fs22\b [ERROR] Error de conexi\'f3n}
+\par
+{\f1\fs20 {\b Causa:} Sin acceso al servidor o p\'e9rdida de red.}
+\par
+{\f1\fs20 {\b Soluci\'f3n:} Verificar la conexi\'f3n a internet. Reintentar en 30 segundos.}
+\par}
+
+{\pard\sb200\sa50
+{\f1\fs22\b [ERROR] Acceso Restringido (RBAC)}
+\par
+{\f1\fs20 {\b Causa:} Intenta acceder a una secci\'f3n sin los permisos necesarios.}
+\par
+{\f1\fs20 {\b Soluci\'f3n:} Esa funci\'f3n es exclusiva del Administrador. Solicitar asistencia.}
+\par}
+
+{\pard\sb400\sa200
+{\f1\fs28\b\cf3 10. PERMISOS GRANULARES DEL PERFIL}
+\par}
+\pard\sb0\sa100{\f1\fs14\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+
+{\pard\sb200\sa100
+{\f1\fs20 El sistema asigna permisos espec\'edficos a cada rol. Puedes ver tus permisos activos haciendo clic en el bot\'f3n [Permisos (N)] en la barra superior de navegaci\'f3n.}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PERMISOS OTORGADOS AL ROL CAJERA:}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 [OTORGADO] payments:cashier:create_payment}
+\par
+{\f1\fs20 [OTORGADO] payments:cashier:search_students}
+\par
+{\f1\fs20 [OTORGADO] payments:cashier:view_receipt}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs22\b PERMISOS NO OTORGADOS (ACCESO DENEGADO):}
+\par}
+{\pard\sb0\sa50
+{\f1\fs20 [DENEGADO] payments:admin:view_history}
+\par
+{\f1\fs20 [DENEGADO] payments:admin:void_receipt}
+\par
+{\f1\fs20 [DENEGADO] payments:admin:close_box}
+\par
+{\f1\fs20 [DENEGADO] payments:config:manage_rates}
+\par}
+
+{\pard\sb200\sa100
+{\f1\fs18\cf3 INFORMACION: Si tu trabajo requiere acceder a funciones adicionales, solicita al Administrador o Superadmin que ajuste tu perfil de permisos. Solo usuarios ADMIN o SUPERADMIN pueden modificar permisos.}
+\par}
+
+\page
+
+{\pard\sb400\sa200\qc
+{\f1\fs20\cf10 \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_}
+\par
+{\f1\fs18\cf10 CDNJ School Platform v1.0 | Manual de Usuario \endash{} Perfil Cajera}
+\par
+{\f1\fs18\cf10 \'a9 2026 \endash{} Todos los derechos reservados}
+\par}
+
+}
