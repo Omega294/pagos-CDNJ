@@ -30,6 +30,49 @@ if not os.path.exists(BACKUPS_DIR):
 
 SECRET_KEY = b"cdnj_secret_key_2026_super_secure"
 
+# Mutex para protección estricta contra condiciones de carrera en cobros concurrentes
+PAYMENT_LOCK = threading.Lock()
+
+def get_db_connection(timeout=30.0):
+    """Retorna una conexión a SQLite optimizada para concurrencia con WAL y timeout extendido."""
+    conn = sqlite3.connect(DB_FILE, timeout=timeout)
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 30000;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
+    return conn
+
+def get_next_sequence_number(cursor, seq_name, fallback_query=None):
+    """
+    Obtiene e incrementa atómicamente el siguiente número en una secuencia.
+    Garantiza correlativos continuos, sin huecos ni colisiones ante cobros simultáneos.
+    """
+    now_iso = datetime.now(timezone.utc).isoformat()
+    cursor.execute("SELECT current_value FROM app_sequences WHERE name = ?;", (seq_name,))
+    row = cursor.fetchone()
+    if row is None:
+        initial_val = 0
+        if fallback_query:
+            try:
+                cursor.execute(fallback_query)
+                fb = cursor.fetchone()
+                if fb and fb[0] is not None:
+                    initial_val = int(fb[0])
+            except Exception:
+                initial_val = 0
+        next_val = initial_val + 1
+        cursor.execute("""
+        INSERT INTO app_sequences (name, current_value, updated_at)
+        VALUES (?, ?, ?)
+        ON CONFLICT(name) DO UPDATE SET current_value = excluded.current_value, updated_at = excluded.updated_at;
+        """, (seq_name, next_val, now_iso))
+        return next_val
+    else:
+        next_val = int(row[0]) + 1
+        cursor.execute("""
+        UPDATE app_sequences SET current_value = ?, updated_at = ? WHERE name = ?;
+        """, (next_val, now_iso, seq_name))
+        return next_val
+
 ALL_GRADES = [
     {"code": "1er Grado", "name": "1er Grado de Primaria", "group": "Primaria"},
     {"code": "2do Grado", "name": "2do Grado de Primaria", "group": "Primaria"},
@@ -473,8 +516,16 @@ def generate_enrollment_debts(conn, school_year="2027-2028", amount_usd=120.0):
 # ==============================================================================
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = get_db_connection()
     cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS app_sequences (
+        name TEXT PRIMARY KEY,
+        current_value INTEGER NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """)
 
     # CORE RBAC TABLES
     cursor.execute("""
@@ -765,7 +816,8 @@ def init_db():
         "ALTER TABLE guardians ADD COLUMN status TEXT DEFAULT 'ACTIVE';",
         "ALTER TABLE students ADD COLUMN status TEXT DEFAULT 'ACTIVE';",
         "ALTER TABLE students ADD COLUMN section TEXT DEFAULT 'A';",
-        "ALTER TABLE payments ADD COLUMN paper_number TEXT;"
+        "ALTER TABLE payments ADD COLUMN paper_number TEXT;",
+        "ALTER TABLE cash_closings ADD COLUMN cashier_id TEXT;"
     ]:
         try:
             cursor.execute(stmt)
@@ -2076,14 +2128,35 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             if not self.check_perm(user, "payments:admin:close_box"):
                 return self.send_json({"error": "Acceso Denegado"}, 403)
 
-            conn = sqlite3.connect(DB_FILE)
+            cashier_filter = query.get("cashierId", ["ALL"])[0].strip()
+
+            conn = get_db_connection()
             c = conn.cursor()
+
+            # Obtener listado de cajeras/usuarios que han procesado pagos completados
             c.execute("""
+            SELECT DISTINCT u.id, u.full_name, u.username
+            FROM payments p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.status = 'COMPLETED'
+            ORDER BY u.full_name ASC;
+            """)
+            cashier_rows = c.fetchall()
+            available_cashiers = [{"id": r[0], "fullName": r[1], "username": r[2]} for r in cashier_rows]
+
+            # Consulta filtrada por cajera o consolidada
+            sql = """
             SELECT pm.method, pm.amount, pm.currency
             FROM payment_methods pm
             JOIN payments p ON pm.payment_id = p.id
-            WHERE p.status = 'COMPLETED';
-            """)
+            WHERE p.status = 'COMPLETED'
+            """
+            params = []
+            if cashier_filter and cashier_filter != "ALL":
+                sql += " AND p.user_id = ?"
+                params.append(cashier_filter)
+
+            c.execute(sql, params)
             rows = c.fetchall()
             conn.close()
 
@@ -2099,7 +2172,9 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "totalDigitalUSD": round(dig_usd, 2),
                 "totalDigitalVES": round(dig_ves, 2),
                 "grandTotalUSD": round(grand_total_usd, 2),
-                "exchangeRate": CURRENT_EXCHANGE_RATE
+                "exchangeRate": CURRENT_EXCHANGE_RATE,
+                "selectedCashierId": cashier_filter,
+                "availableCashiers": available_cashiers
             })
 
         # Get All Students for Management
@@ -2256,170 +2331,186 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             if not debt_ids or not methods:
                 return self.send_json({"error": "Validación fallida", "message": "Seleccione deudas y método de pago."}, 400)
 
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
+            # Bloque atómico protegido contra concurrencia multi-cajera
+            with PAYMENT_LOCK:
+                conn = get_db_connection()
+                c = conn.cursor()
 
-            q_marks = ",".join(["?"] * len(debt_ids))
-            c.execute(f"""
-            SELECT d.id, d.amount_usd, d.due_date, d.status, fc.name, fc.code, d.student_id
-            FROM student_debts d
-            JOIN fee_concepts fc ON d.fee_concept_id = fc.id
-            WHERE d.id IN ({q_marks}) AND d.status IN ('PENDING', 'PARTIAL');
-            """, debt_ids)
-            debt_rows = c.fetchall()
+                try:
+                    q_marks = ",".join(["?"] * len(debt_ids))
+                    c.execute(f"""
+                    SELECT d.id, d.amount_usd, d.due_date, d.status, fc.name, fc.code, d.student_id
+                    FROM student_debts d
+                    JOIN fee_concepts fc ON d.fee_concept_id = fc.id
+                    WHERE d.id IN ({q_marks}) AND d.status IN ('PENDING', 'PARTIAL');
+                    """, debt_ids)
+                    debt_rows = c.fetchall()
 
-            if not debt_rows:
-                conn.close()
-                return self.send_json({"error": "Error", "message": "Deudas no encontradas o ya pagadas."}, 400)
+                    # Si alguna deuda seleccionada ya no existe o fue cobrada por otra cajera en el mismo instante
+                    if len(debt_rows) != len(set(debt_ids)):
+                        conn.close()
+                        return self.send_json({
+                            "error": "Conflicto de Concurrencia",
+                            "message": "Una o más deudas seleccionadas acaban de ser procesadas por otra cajera o ya no están pendientes. Por favor recargue el panel del estudiante."
+                        }, 409)
 
-            # Sort selected debts by strict hierarchy
-            debt_rows = sort_debts_by_hierarchy(debt_rows)
+                    # Sort selected debts by strict hierarchy
+                    debt_rows = sort_debts_by_hierarchy(debt_rows)
 
-            # Validate FIFO debt hierarchy per student
-            selected_set = set(r[0] for r in debt_rows)
-            student_ids = set(r[6] for r in debt_rows)
+                    # Validate FIFO debt hierarchy per student
+                    selected_set = set(r[0] for r in debt_rows)
+                    student_ids = set(r[6] for r in debt_rows)
 
-            for st_id in student_ids:
-                c.execute("""
-                SELECT d.id, d.amount_usd, d.due_date, d.status, fc.name, fc.code
-                FROM student_debts d
-                JOIN fee_concepts fc ON d.fee_concept_id = fc.id
-                WHERE d.student_id = ? AND d.status IN ('PENDING', 'PARTIAL');
-                """, (st_id,))
-                all_st_debts = sort_debts_by_hierarchy(c.fetchall())
-                
-                seen_unselected = False
-                for sd in all_st_debts:
-                    sd_id = sd[0]
-                    sd_name = sd[4]
-                    if sd_id in selected_set:
-                        if seen_unselected:
-                            conn.close()
-                            return self.send_json({
-                                "error": "Error de Prelación de Cobro (FIFO)",
-                                "message": f"No puede saltar la Matrícula del año escolar en curso ni las mensualidades pendientes del período anterior ({sd_name}) antes de procesar pagos posteriores."
-                            }, 400)
-                    else:
-                        seen_unselected = True
-
-            total_debt_usd = sum(r[1] for r in debt_rows)
-
-            if is_partial and partial_amount_usd > 0 and partial_amount_usd < total_debt_usd:
-                total_usd = partial_amount_usd
-            else:
-                total_usd = total_debt_usd
-
-            total_local = total_usd * rate
-
-            # Fetch & update paper settings
-            c.execute("SELECT key_name, value_text FROM system_settings WHERE key_name LIKE 'paper_%';")
-            paper_settings = dict(c.fetchall())
-            paper_curr = int(paper_settings.get("paper_current_number", "1000"))
-            paper_interval = max(1, int(paper_settings.get("paper_check_interval", "5")))
-            paper_count_since = int(paper_settings.get("paper_count_since_check", "0"))
-
-            assigned_paper_str = str(paper_curr)
-            next_paper_curr = paper_curr + 1
-            next_count_since = paper_count_since + 1
-            paper_check_required = (next_count_since >= paper_interval)
-
-            now_iso = datetime.now(timezone.utc).isoformat()
-            c.execute("""
-            INSERT INTO system_settings (key_name, value_text, updated_at)
-            VALUES ('paper_current_number', ?, ?)
-            ON CONFLICT(key_name) DO UPDATE SET value_text = excluded.value_text, updated_at = excluded.updated_at;
-            """, (str(next_paper_curr), now_iso))
-
-            c.execute("""
-            INSERT INTO system_settings (key_name, value_text, updated_at)
-            VALUES ('paper_count_since_check', ?, ?)
-            ON CONFLICT(key_name) DO UPDATE SET value_text = excluded.value_text, updated_at = excluded.updated_at;
-            """, (str(next_count_since), now_iso))
-
-            c.execute("SELECT COUNT(*) FROM payments;")
-            count = c.fetchone()[0]
-            receipt_num = f"REC-2026-{str(count + 1).zfill(5)}"
-            payment_id = f"pay_{int(time.time() * 1000)}"
-            now_str = datetime.now(timezone.utc).isoformat()
-
-            c.execute("""
-            INSERT INTO payments (id, receipt_number, user_id, total_usd, exchange_rate, total_local, status, created_at, paper_number)
-            VALUES (?,?,?,?,?,?,'COMPLETED',?,?);
-            """, (payment_id, receipt_num, user["userId"], total_usd, rate, total_local, now_str, assigned_paper_str))
-
-            # Distribuir el abono / pago
-            remaining_to_apply = total_usd
-            for dr in debt_rows:
-                debt_id, current_amount = dr[0], dr[1]
-                if remaining_to_apply <= 0:
-                    break
-                
-                pay_for_this_debt = min(remaining_to_apply, current_amount)
-                new_debt_balance = current_amount - pay_for_this_debt
-
-                if new_debt_balance <= 0.01:
-                    new_status = 'PAID'
-                    new_debt_balance = 0.0
-                else:
-                    new_status = 'PARTIAL'
-
-                detail_id = f"pd_{int(time.time() * 1000)}_{debt_id}"
-                c.execute("INSERT INTO payment_details VALUES (?,?,?,?);", (detail_id, payment_id, debt_id, pay_for_this_debt))
-                c.execute("UPDATE student_debts SET amount_usd = ?, status = ? WHERE id = ?;", (new_debt_balance, new_status, debt_id))
-                
-                # Check if debt concept is Matrícula to save re-enrollment record
-                c.execute("""
-                SELECT fc.code, sd.student_id, s.grade, COALESCE(s.section, 'A')
-                FROM student_debts sd
-                JOIN fee_concepts fc ON sd.fee_concept_id = fc.id
-                JOIN students s ON sd.student_id = s.id
-                WHERE sd.id = ?;
-                """, (debt_id,))
-                debt_info = c.fetchone()
-                if debt_info:
-                    concept_code_d, st_id_d, curr_g_d, curr_s_d = debt_info[0], debt_info[1], debt_info[2], debt_info[3]
-                    if concept_code_d.startswith("MAT-") or "MATRICULA" in concept_code_d.upper() or "INSCRIPCION" in concept_code_d.upper():
-                        re_enrollment_data = body.get("reEnrollmentData", {})
-                        st_re_info = re_enrollment_data.get(st_id_d, {}) if isinstance(re_enrollment_data, dict) else {}
-                        next_g = st_re_info.get("nextGrade") or suggest_next_grade(curr_g_d)
-                        next_s = st_re_info.get("nextSection") or curr_s_d or "A"
-                        prom_status = st_re_info.get("promotedStatus") or "PROMOTED"
-                        sy = concept_code_d.replace("MAT-", "") if concept_code_d.startswith("MAT-") else "2027-2028"
-
-                        re_record_id = f"re_{int(time.time() * 1000)}_{st_id_d}"
+                    for st_id in student_ids:
                         c.execute("""
-                        INSERT INTO re_enrollment_records (id, student_id, school_year, payment_id, current_grade, next_grade, next_section, promoted_status, enrolled_at, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(id) DO UPDATE SET next_grade=excluded.next_grade, next_section=excluded.next_section, promoted_status=excluded.promoted_status;
-                        """, (re_record_id, st_id_d, sy, payment_id, curr_g_d, next_g, next_s, prom_status, now_str, now_str))
+                        SELECT d.id, d.amount_usd, d.due_date, d.status, fc.name, fc.code
+                        FROM student_debts d
+                        JOIN fee_concepts fc ON d.fee_concept_id = fc.id
+                        WHERE d.student_id = ? AND d.status IN ('PENDING', 'PARTIAL');
+                        """, (st_id,))
+                        all_st_debts = sort_debts_by_hierarchy(c.fetchall())
+                        
+                        seen_unselected = False
+                        for sd in all_st_debts:
+                            sd_id = sd[0]
+                            sd_name = sd[4]
+                            if sd_id in selected_set:
+                                if seen_unselected:
+                                    conn.close()
+                                    return self.send_json({
+                                        "error": "Error de Prelación de Cobro (FIFO)",
+                                        "message": f"No puede saltar la Matrícula del año escolar en curso ni las mensualidades pendientes del período anterior ({sd_name}) antes de procesar pagos posteriores."
+                                    }, 400)
+                            else:
+                                seen_unselected = True
 
-                remaining_to_apply -= pay_for_this_debt
+                    total_debt_usd = sum(r[1] for r in debt_rows)
 
-            # Standardize methods if dict or list
-            methods_list = []
-            if isinstance(methods, dict):
-                for k, v in methods.items():
-                    methods_list.append({"method": k, "amount": float(v), "currency": "USD" if "USD" in k else "VES"})
-            elif isinstance(methods, list):
-                methods_list = methods
+                    if is_partial and partial_amount_usd > 0 and partial_amount_usd < total_debt_usd:
+                        total_usd = partial_amount_usd
+                    else:
+                        total_usd = total_debt_usd
 
-            # Insert methods
-            for idx, m in enumerate(methods_list):
-                m_id = f"pm_{int(time.time() * 1000)}_{idx}"
-                m_type = m.get("method") if isinstance(m, dict) else str(m)
-                m_amount = float(m.get("amount", 0)) if isinstance(m, dict) else 0.0
-                m_curr = m.get("currency", "USD") if isinstance(m, dict) else "USD"
-                m_ref = m.get("reference") if isinstance(m, dict) else None
-                m_bank = m.get("bank") if isinstance(m, dict) else None
+                    total_local = total_usd * rate
 
-                r_status = "PENDIENTE" if m_type in ["PAGO_MOVIL", "TRANSFER_VES"] else "AUTO"
-                c.execute("""
-                INSERT INTO payment_methods (id, payment_id, method, amount, currency, reference, bank, reconciliation_status)
-                VALUES (?,?,?,?,?,?,?,?);
-                """, (m_id, payment_id, m_type, m_amount, m_curr, m_ref, m_bank, r_status))
+                    # Fetch & update paper settings atómicamente
+                    c.execute("SELECT key_name, value_text FROM system_settings WHERE key_name LIKE 'paper_%';")
+                    paper_settings = dict(c.fetchall())
+                    paper_curr = int(paper_settings.get("paper_current_number", "1000"))
+                    paper_interval = max(1, int(paper_settings.get("paper_check_interval", "5")))
+                    paper_count_since = int(paper_settings.get("paper_count_since_check", "0"))
 
-            conn.commit()
-            conn.close()
+                    assigned_paper_str = str(paper_curr)
+                    next_paper_curr = paper_curr + 1
+                    next_count_since = paper_count_since + 1
+                    paper_check_required = (next_count_since >= paper_interval)
+
+                    now_iso = datetime.now(timezone.utc).isoformat()
+                    c.execute("""
+                    INSERT INTO system_settings (key_name, value_text, updated_at)
+                    VALUES ('paper_current_number', ?, ?)
+                    ON CONFLICT(key_name) DO UPDATE SET value_text = excluded.value_text, updated_at = excluded.updated_at;
+                    """, (str(next_paper_curr), now_iso))
+
+                    c.execute("""
+                    INSERT INTO system_settings (key_name, value_text, updated_at)
+                    VALUES ('paper_count_since_check', ?, ?)
+                    ON CONFLICT(key_name) DO UPDATE SET value_text = excluded.value_text, updated_at = excluded.updated_at;
+                    """, (str(next_count_since), now_iso))
+
+                    # Generación atómica del correlativo de recibo (REC-YYYY-XXXXX)
+                    cur_year = datetime.now().year
+                    seq_key = f"RECEIPT_{cur_year}"
+                    fallback_q = f"SELECT MAX(CAST(SUBSTR(receipt_number, 10) AS INTEGER)) FROM payments WHERE receipt_number LIKE 'REC-{cur_year}-%';"
+                    receipt_seq = get_next_sequence_number(c, seq_key, fallback_query=fallback_q)
+                    receipt_num = f"REC-{cur_year}-{str(receipt_seq).zfill(5)}"
+
+                    payment_id = f"pay_{int(time.time() * 1000)}"
+                    now_str = datetime.now(timezone.utc).isoformat()
+
+                    c.execute("""
+                    INSERT INTO payments (id, receipt_number, user_id, total_usd, exchange_rate, total_local, status, created_at, paper_number)
+                    VALUES (?,?,?,?,?,?,'COMPLETED',?,?);
+                    """, (payment_id, receipt_num, user["userId"], total_usd, rate, total_local, now_str, assigned_paper_str))
+
+                    # Distribuir el abono / pago
+                    remaining_to_apply = total_usd
+                    for dr in debt_rows:
+                        debt_id, current_amount = dr[0], dr[1]
+                        if remaining_to_apply <= 0:
+                            break
+                        
+                        pay_for_this_debt = min(remaining_to_apply, current_amount)
+                        new_debt_balance = current_amount - pay_for_this_debt
+
+                        if new_debt_balance <= 0.01:
+                            new_status = 'PAID'
+                            new_debt_balance = 0.0
+                        else:
+                            new_status = 'PARTIAL'
+
+                        detail_id = f"pd_{int(time.time() * 1000)}_{debt_id}"
+                        c.execute("INSERT INTO payment_details VALUES (?,?,?,?);", (detail_id, payment_id, debt_id, pay_for_this_debt))
+                        c.execute("UPDATE student_debts SET amount_usd = ?, status = ? WHERE id = ?;", (new_debt_balance, new_status, debt_id))
+                        
+                        # Check if debt concept is Matrícula to save re-enrollment record
+                        c.execute("""
+                        SELECT fc.code, sd.student_id, s.grade, COALESCE(s.section, 'A')
+                        FROM student_debts sd
+                        JOIN fee_concepts fc ON sd.fee_concept_id = fc.id
+                        JOIN students s ON sd.student_id = s.id
+                        WHERE sd.id = ?;
+                        """, (debt_id,))
+                        debt_info = c.fetchone()
+                        if debt_info:
+                            concept_code_d, st_id_d, curr_g_d, curr_s_d = debt_info[0], debt_info[1], debt_info[2], debt_info[3]
+                            if concept_code_d.startswith("MAT-") or "MATRICULA" in concept_code_d.upper() or "INSCRIPCION" in concept_code_d.upper():
+                                re_enrollment_data = body.get("reEnrollmentData", {})
+                                st_re_info = re_enrollment_data.get(st_id_d, {}) if isinstance(re_enrollment_data, dict) else {}
+                                next_g = st_re_info.get("nextGrade") or suggest_next_grade(curr_g_d)
+                                next_s = st_re_info.get("nextSection") or curr_s_d or "A"
+                                prom_status = st_re_info.get("promotedStatus") or "PROMOTED"
+                                sy = concept_code_d.replace("MAT-", "") if concept_code_d.startswith("MAT-") else "2027-2028"
+
+                                re_record_id = f"re_{int(time.time() * 1000)}_{st_id_d}"
+                                c.execute("""
+                                INSERT INTO re_enrollment_records (id, student_id, school_year, payment_id, current_grade, next_grade, next_section, promoted_status, enrolled_at, created_at)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                ON CONFLICT(id) DO UPDATE SET next_grade=excluded.next_grade, next_section=excluded.next_section, promoted_status=excluded.promoted_status;
+                                """, (re_record_id, st_id_d, sy, payment_id, curr_g_d, next_g, next_s, prom_status, now_str, now_str))
+
+                        remaining_to_apply -= pay_for_this_debt
+
+                    # Standardize methods if dict or list
+                    methods_list = []
+                    if isinstance(methods, dict):
+                        for k, v in methods.items():
+                            methods_list.append({"method": k, "amount": float(v), "currency": "USD" if "USD" in k else "VES"})
+                    elif isinstance(methods, list):
+                        methods_list = methods
+
+                    # Insert methods
+                    for idx, m in enumerate(methods_list):
+                        m_id = f"pm_{int(time.time() * 1000)}_{idx}"
+                        m_type = m.get("method") if isinstance(m, dict) else str(m)
+                        m_amount = float(m.get("amount", 0)) if isinstance(m, dict) else 0.0
+                        m_curr = m.get("currency", "USD") if isinstance(m, dict) else "USD"
+                        m_ref = m.get("reference") if isinstance(m, dict) else None
+                        m_bank = m.get("bank") if isinstance(m, dict) else None
+
+                        r_status = "PENDIENTE" if m_type in ["PAGO_MOVIL", "TRANSFER_VES"] else "AUTO"
+                        c.execute("""
+                        INSERT INTO payment_methods (id, payment_id, method, amount, currency, reference, bank, reconciliation_status)
+                        VALUES (?,?,?,?,?,?,?,?);
+                        """, (m_id, payment_id, m_type, m_amount, m_curr, m_ref, m_bank, r_status))
+
+                    conn.commit()
+                except Exception as err:
+                    conn.rollback()
+                    conn.close()
+                    return self.send_json({"error": "Error al procesar el pago concurrentemente", "message": str(err)}, 500)
+
+                conn.close()
 
             return self.send_json({
                 "id": payment_id,
@@ -2669,30 +2760,40 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             if len(reason) < 5:
                 return self.send_json({"error": "Validación fallida", "message": "Especifique motivo (mínimo 5 caracteres)."}, 400)
 
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("SELECT status FROM payments WHERE id = ?;", (payment_id,))
-            row = c.fetchone()
+            with PAYMENT_LOCK:
+                conn = get_db_connection()
+                c = conn.cursor()
+                try:
+                    c.execute("SELECT status FROM payments WHERE id = ?;", (payment_id,))
+                    row = c.fetchone()
 
-            if not row or row[0] == 'VOIDED':
+                    if not row or row[0] == 'VOIDED':
+                        conn.close()
+                        return self.send_json({"error": "Error", "message": "El recibo no existe o ya fue anulado."}, 400)
+
+                    now_str = datetime.now(timezone.utc).isoformat()
+                    c.execute("""
+                    UPDATE payments SET status = 'VOIDED', void_reason = ?, voided_by_id = ?, voided_at = ?
+                    WHERE id = ?;
+                    """, (reason, user["userId"], now_str, payment_id))
+
+                    # Revert debts to PENDING and restore paid amount
+                    c.execute("SELECT debt_id, amount_paid_usd FROM payment_details WHERE payment_id = ?;", (payment_id,))
+                    details = c.fetchall()
+                    for did, amt_paid in details:
+                        c.execute("UPDATE student_debts SET amount_usd = amount_usd + ?, status = 'PENDING' WHERE id = ?;", (amt_paid, did))
+
+                    # Delete or invalidate re-enrollment record if linked to this payment
+                    c.execute("DELETE FROM re_enrollment_records WHERE payment_id = ?;", (payment_id,))
+
+                    conn.commit()
+                except Exception as err:
+                    conn.rollback()
+                    conn.close()
+                    return self.send_json({"error": "Error al anular transacción", "message": str(err)}, 500)
                 conn.close()
-                return self.send_json({"error": "Error", "message": "El recibo no existe o ya fue anulado."}, 400)
 
-            now_str = datetime.now(timezone.utc).isoformat()
-            c.execute("""
-            UPDATE payments SET status = 'VOIDED', void_reason = ?, voided_by_id = ?, voided_at = ?
-            WHERE id = ?;
-            """, (reason, user["userId"], now_str, payment_id))
-
-            # Revert debts to PENDING
-            c.execute("SELECT debt_id FROM payment_details WHERE payment_id = ?;", (payment_id,))
-            debt_ids = [r[0] for r in c.fetchall()]
-            for did in debt_ids:
-                c.execute("UPDATE student_debts SET status = 'PENDING' WHERE id = ?;", (did,))
-
-            conn.commit()
-            conn.close()
-            return self.send_json({"message": "Recibo anulado y deudas restablecidas."})
+            return self.send_json({"message": "Recibo anulado exitosamente y deudas restablecidas."})
 
         # Toggle Re-Enrollment Module Active Status (Superadmin Only for 2027-2028 / 2028)
         if path == "/api/payments/re-enrollment/toggle":
@@ -3017,38 +3118,55 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 return self.send_json({"error": "Acceso Denegado", "message": "Falta el permiso [payments:admin:close_box]"}, 403)
 
             notes = body.get("notes", "Cierre de caja generado")
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
+            cashier_id = body.get("cashierId", "ALL")
 
-            c.execute("""
-            SELECT pm.method, pm.amount, pm.currency
-            FROM payment_methods pm
-            JOIN payments p ON pm.payment_id = p.id
-            WHERE p.status = 'COMPLETED';
-            """)
-            rows = c.fetchall()
+            with PAYMENT_LOCK:
+                conn = get_db_connection()
+                c = conn.cursor()
 
-            cash_usd = sum(r[1] for r in rows if r[0] == 'CASH_USD')
-            cash_ves = sum(r[1] for r in rows if r[0] == 'CASH_VES')
-            dig_usd = sum(r[1] for r in rows if r[0] not in ('CASH_USD', 'CASH_VES') and r[2] == 'USD')
-            dig_ves = sum(r[1] for r in rows if r[0] not in ('CASH_USD', 'CASH_VES') and r[2] == 'VES')
-            grand_total_usd = cash_usd + (cash_ves / CURRENT_EXCHANGE_RATE) + dig_usd + (dig_ves / CURRENT_EXCHANGE_RATE)
+                sql = """
+                SELECT pm.method, pm.amount, pm.currency
+                FROM payment_methods pm
+                JOIN payments p ON pm.payment_id = p.id
+                WHERE p.status = 'COMPLETED'
+                """
+                params = []
+                if cashier_id and cashier_id != "ALL":
+                    sql += " AND p.user_id = ?"
+                    params.append(cashier_id)
 
-            c.execute("SELECT COUNT(*) FROM cash_closings;")
-            count = c.fetchone()[0] or 0
+                c.execute(sql, params)
+                rows = c.fetchall()
 
-            closing_num = f"CLS-{datetime.now().strftime('%Y-%m-%d')}-{str(count + 1).zfill(3)}"
-            closing_id = f"cls_{int(time.time() * 1000)}"
-            now_str = datetime.now(timezone.utc).isoformat()
+                cash_usd = sum(r[1] for r in rows if r[0] == 'CASH_USD')
+                cash_ves = sum(r[1] for r in rows if r[0] == 'CASH_VES')
+                dig_usd = sum(r[1] for r in rows if r[0] not in ('CASH_USD', 'CASH_VES') and r[2] == 'USD')
+                dig_ves = sum(r[1] for r in rows if r[0] not in ('CASH_USD', 'CASH_VES') and r[2] == 'VES')
+                grand_total_usd = cash_usd + (cash_ves / CURRENT_EXCHANGE_RATE) + dig_usd + (dig_ves / CURRENT_EXCHANGE_RATE)
 
-            c.execute("""
-            INSERT INTO cash_closings VALUES (?,?,?,?,?,?,?,?,?,?,?);
-            """, (closing_id, closing_num, user["userId"], now_str, now_str, cash_usd, cash_ves, dig_usd, dig_ves, grand_total_usd, notes))
+                date_str = datetime.now().strftime('%Y-%m-%d')
+                seq_key = f"CLOSING_{date_str}"
+                fallback_q = f"SELECT COUNT(*) FROM cash_closings WHERE closing_number LIKE 'CLS-{date_str}-%';"
+                closing_seq = get_next_sequence_number(c, seq_key, fallback_query=fallback_q)
 
-            conn.commit()
-            conn.close()
+                closing_num = f"CLS-{date_str}-{str(closing_seq).zfill(3)}"
+                closing_id = f"cls_{int(time.time() * 1000)}"
+                now_str = datetime.now(timezone.utc).isoformat()
 
-            return self.send_json({"success": True, "closingNumber": closing_num, "grandTotalUSD": round(grand_total_usd, 2)}, 201)
+                c.execute("""
+                INSERT INTO cash_closings (id, closing_number, user_id, opened_at, closed_at, total_cash_usd, total_cash_local, total_digital_usd, total_digital_local, grand_total_usd, notes, cashier_id)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?);
+                """, (closing_id, closing_num, user["userId"], now_str, now_str, cash_usd, cash_ves, dig_usd, dig_ves, grand_total_usd, notes, cashier_id))
+
+                conn.commit()
+                conn.close()
+
+            return self.send_json({
+                "success": True,
+                "closingNumber": closing_num,
+                "cashierId": cashier_id,
+                "grandTotalUSD": round(grand_total_usd, 2)
+            }, 201)
         # Send Email Receipt
         if path.startswith("/api/payments/receipts/") and path.endswith("/send-email"):
             user = self.get_auth_user()
@@ -3304,14 +3422,17 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
 
         return self.send_json({"error": "Endpoint POST no encontrado"}, 404)
 
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
 def run():
     init_db()
     # Start automated backup scheduler thread
     t = threading.Thread(target=backup_scheduler_worker, daemon=True)
     t.start()
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), CDNJHandler) as httpd:
-        print(f"🚀 CDNJ Server corriendo en http://localhost:{PORT}")
+    with ThreadedTCPServer(("", PORT), CDNJHandler) as httpd:
+        print(f"🚀 CDNJ Server corriendo en http://localhost:{PORT} (Multi-hilo concurrente activado)")
         print("🔑 Credenciales Demo:")
         print("   - cajera / 123456     (Rol: CAJERA)")
         print("   - admin / 123456      (Rol: ADMINISTRADOR)")

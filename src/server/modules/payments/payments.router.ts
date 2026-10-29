@@ -95,60 +95,83 @@ paymentsRouter.post(
 
     const rate = exchangeRate || currentExchangeRate;
 
-    // Buscar deudas
-    const debts = await prisma.studentDebt.findMany({
-      where: { id: { in: selectedDebtIds }, status: 'PENDING' }
-    });
+    try {
+      const payment = await prisma.$transaction(async (tx) => {
+        // Buscar y re-validar deudas dentro de la transacción atómica
+        const debts = await tx.studentDebt.findMany({
+          where: { id: { in: selectedDebtIds }, status: 'PENDING' }
+        });
 
-    if (debts.length === 0) {
-      return res.status(400).json({ error: 'Error', message: 'Las deudas seleccionadas no existen o ya fueron pagadas.' });
-    }
-
-    const totalUSD = debts.reduce((sum, d) => sum + d.amountUSD, 0);
-    const totalLocal = totalUSD * rate;
-
-    // Generar correlativo de recibo
-    const count = await prisma.payment.count();
-    const receiptNumber = `REC-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
-
-    // Crear transacción en base de datos
-    const payment = await prisma.payment.create({
-      data: {
-        receiptNumber,
-        userId: req.user!.userId,
-        totalUSD,
-        exchangeRate: rate,
-        totalLocal,
-        status: 'COMPLETED',
-        paymentItems: {
-          create: debts.map((d) => ({
-            debtId: d.id,
-            amountPaidUSD: d.amountUSD
-          }))
-        },
-        methods: {
-          create: methods.map((m: any) => ({
-            method: m.method,
-            amount: Number(m.amount),
-            currency: m.currency,
-            reference: m.reference || null
-          }))
+        if (debts.length !== selectedDebtIds.length) {
+          throw new Error('CONFLICT: Una o más deudas seleccionadas acaban de ser procesadas por otra cajera o ya no están pendientes.');
         }
-      },
-      include: {
-        paymentItems: { include: { debt: { include: { feeConcept: true } } } },
-        methods: true,
-        processedBy: { select: { fullName: true, username: true } }
+
+        const totalUSD = debts.reduce((sum, d) => sum + d.amountUSD, 0);
+        const totalLocal = totalUSD * rate;
+
+        // Generar correlativo de recibo seguro
+        const currentYear = new Date().getFullYear();
+        const lastPayment = await tx.payment.findFirst({
+          where: { receiptNumber: { startsWith: `REC-${currentYear}-` } },
+          orderBy: { receiptNumber: 'desc' }
+        });
+
+        let nextSeq = 1;
+        if (lastPayment) {
+          const parts = lastPayment.receiptNumber.split('-');
+          if (parts.length === 3) {
+            nextSeq = parseInt(parts[2], 10) + 1;
+          }
+        }
+        const receiptNumber = `REC-${currentYear}-${String(nextSeq).padStart(5, '0')}`;
+
+        // Crear transacción de pago
+        const createdPayment = await tx.payment.create({
+          data: {
+            receiptNumber,
+            userId: req.user!.userId,
+            totalUSD,
+            exchangeRate: rate,
+            totalLocal,
+            status: 'COMPLETED',
+            paymentItems: {
+              create: debts.map((d) => ({
+                debtId: d.id,
+                amountPaidUSD: d.amountUSD
+              }))
+            },
+            methods: {
+              create: methods.map((m: any) => ({
+                method: m.method,
+                amount: Number(m.amount),
+                currency: m.currency,
+                reference: m.reference || null
+              }))
+            }
+          },
+          include: {
+            paymentItems: { include: { debt: { include: { feeConcept: true } } } },
+            methods: true,
+            processedBy: { select: { fullName: true, username: true } }
+          }
+        });
+
+        // Actualizar estado de las deudas a PAID
+        await tx.studentDebt.updateMany({
+          where: { id: { in: selectedDebtIds } },
+          data: { status: 'PAID' }
+        });
+
+        return createdPayment;
+      });
+
+      return res.status(201).json(payment);
+    } catch (err: any) {
+      if (err.message && err.message.startsWith('CONFLICT:')) {
+        return res.status(409).json({ error: 'Conflicto de Concurrencia', message: err.message.replace('CONFLICT: ', '') });
       }
-    });
-
-    // Actualizar estado de las deudas a PAID
-    await prisma.studentDebt.updateMany({
-      where: { id: { in: selectedDebtIds } },
-      data: { status: 'PAID' }
-    });
-
-    return res.status(201).json(payment);
+      return res.status(500).json({ error: 'Error de Transacción', message: err.message || 'Error al procesar el pago.' });
+    }
   }
 );
 
@@ -234,38 +257,51 @@ paymentsRouter.post(
       return res.status(400).json({ error: 'Validación fallida', message: 'Debe especificar un motivo detallado de anulación (mínimo 5 caracteres).' });
     }
 
-    const payment = await prisma.payment.findUnique({
-      where: { id },
-      include: { paymentItems: true }
-    });
+    try {
+      const voidedPayment = await prisma.$transaction(async (tx) => {
+        const payment = await tx.payment.findUnique({
+          where: { id },
+          include: { paymentItems: true }
+        });
 
-    if (!payment) {
-      return res.status(404).json({ error: 'No encontrado', message: 'El recibo no existe.' });
-    }
+        if (!payment) {
+          throw new Error('NOT_FOUND');
+        }
 
-    if (payment.status === 'VOIDED') {
-      return res.status(400).json({ error: 'Error', message: 'Este recibo ya fue anulado previamente.' });
-    }
+        if (payment.status === 'VOIDED') {
+          throw new Error('ALREADY_VOIDED');
+        }
 
-    // Anular el pago
-    const voidedPayment = await prisma.payment.update({
-      where: { id },
-      data: {
-        status: 'VOIDED',
-        voidReason: reason,
-        voidedById: req.user!.userId,
-        voidedAt: new Date()
+        const updated = await tx.payment.update({
+          where: { id },
+          data: {
+            status: 'VOIDED',
+            voidReason: reason,
+            voidedById: req.user!.userId,
+            voidedAt: new Date()
+          }
+        });
+
+        // Reinstaurar el estado PENDING de las deudas afectadas
+        const debtIds = payment.paymentItems.map((pi) => pi.debtId);
+        await tx.studentDebt.updateMany({
+          where: { id: { in: debtIds } },
+          data: { status: 'PENDING' }
+        });
+
+        return updated;
+      });
+
+      return res.json({ message: 'Recibo anulado exitosamente y deudas restablecidas.', payment: voidedPayment });
+    } catch (err: any) {
+      if (err.message === 'NOT_FOUND') {
+        return res.status(404).json({ error: 'No encontrado', message: 'El recibo no existe.' });
       }
-    });
-
-    // Reinstaurar el estado PENDING de las deudas afectadas
-    const debtIds = payment.paymentItems.map((pi) => pi.debtId);
-    await prisma.studentDebt.updateMany({
-      where: { id: { in: debtIds } },
-      data: { status: 'PENDING' }
-    });
-
-    return res.json({ message: 'Recibo anulado exitosamente y deudas restablecidas.', payment: voidedPayment });
+      if (err.message === 'ALREADY_VOIDED') {
+        return res.status(400).json({ error: 'Error', message: 'Este recibo ya fue anulado previamente.' });
+      }
+      return res.status(500).json({ error: 'Error de Servidor', message: err.message || 'Error al anular recibo.' });
+    }
   }
 );
 

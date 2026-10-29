@@ -20,6 +20,7 @@ export const AdminPaymentsPanel: React.FC = () => {
   const [closingData, setClosingData] = useState<any | null>(null);
   const [closingNotes, setClosingNotes] = useState('');
   const [closingSubmitting, setClosingSubmitting] = useState(false);
+  const [selectedClosingCashier, setSelectedClosingCashier] = useState('ALL');
 
   const fetchTransactions = () => {
     setLoading(true);
@@ -42,8 +43,9 @@ export const AdminPaymentsPanel: React.FC = () => {
   }, [token]);
 
   // Cargar resumen para Cierre de Caja
-  const handleOpenClosingModal = () => {
-    fetch('/api/payments/cash-closing/summary', {
+  const handleOpenClosingModal = (cashierId = 'ALL') => {
+    setSelectedClosingCashier(cashierId);
+    fetch(`/api/payments/cash-closing/summary?cashierId=${encodeURIComponent(cashierId)}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -97,7 +99,10 @@ export const AdminPaymentsPanel: React.FC = () => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ notes: closingNotes })
+        body: JSON.stringify({ 
+          notes: closingNotes,
+          cashierId: selectedClosingCashier
+        })
       });
 
       const data = await res.json();
@@ -285,6 +290,26 @@ export const AdminPaymentsPanel: React.FC = () => {
             <h3 style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
               <Calculator size={22} /> Reporte de Cierre de Caja Diario
             </h3>
+
+            {/* Selector de Puesto de Caja / Consolidado */}
+            <div style={{ marginBottom: '1rem', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '0.35rem', fontWeight: 600 }}>
+                Filtrar Arqueo por Cajera / Puesto:
+              </label>
+              <select
+                className="select-field"
+                style={{ width: '100%', background: '#131b2e', color: '#f3f4f6', border: '1px solid var(--border-color)', padding: '0.5rem', borderRadius: '6px' }}
+                value={selectedClosingCashier}
+                onChange={e => handleOpenClosingModal(e.target.value)}
+              >
+                <option value="ALL">🏢 Todas las Cajas (Consolidado General)</option>
+                {closingData.availableCashiers?.map((c: any) => (
+                  <option key={c.id} value={c.id}>
+                    👤 {c.fullName} (@{c.username})
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'rgba(11, 15, 25, 0.6)', padding: '1rem', borderRadius: '8px', marginBottom: '1.25rem' }}>
               <div>

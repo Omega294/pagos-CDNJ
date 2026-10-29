@@ -2213,10 +2213,10 @@
     }
 
     // Modal Closing
-    // Modal Closing
-    async function openClosingModal() {
+    async function openClosingModal(cashierId = 'ALL') {
       try {
-        const res = await fetch(`${API_BASE}/api/payments/cash-closing/summary`, {
+        state.closingCashierId = cashierId;
+        const res = await fetch(`${API_BASE}/api/payments/cash-closing/summary?cashierId=${encodeURIComponent(cashierId)}`, {
           headers: { Authorization: `Bearer ${state.token}` }
         });
         if (res.ok) {
@@ -2233,16 +2233,36 @@
       }
     }
 
+    async function changeClosingCashier(newCashierId) {
+      await openClosingModal(newCashierId);
+    }
+
     function renderClosingModalHTML() {
-      const cd = state.closingData || { totalCashUSD: 0, totalCashVES: 0, totalDigitalUSD: 0, totalDigitalVES: 0, grandTotalUSD: 0, exchangeRate: 36.5 };
+      const cd = state.closingData || { totalCashUSD: 0, totalCashVES: 0, totalDigitalUSD: 0, totalDigitalVES: 0, grandTotalUSD: 0, exchangeRate: 36.5, availableCashiers: [] };
+      const selectedCashier = state.closingCashierId || cd.selectedCashierId || 'ALL';
+      const cashiers = cd.availableCashiers || [];
+
       return `
         <div class="modal-overlay" onclick="state.showClosingModal=false; render();">
           <div class="modal-content" style="max-width:550px;" onclick="event.stopPropagation();">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
               <h3 style="color:#10b981; font-size:1.25rem; font-weight:800; display:flex; align-items:center; gap:0.5rem;">
-                <i data-lucide="lock"></i> Cierre de Caja Diario
+                <i data-lucide="lock"></i> Cierre y Arqueo de Caja
               </h3>
               <button onclick="state.showClosingModal=false; render();" class="btn btn-secondary btn-sm">✕</button>
+            </div>
+
+            <!-- Selector de Cajera / Consolidado General -->
+            <div style="margin-bottom:1.2rem; background:rgba(255,255,255,0.03); padding:0.85rem; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+              <label style="display:block; font-size:0.82rem; color:#9ca3af; font-weight:600; margin-bottom:0.4rem;">
+                Filtrar Arqueo por Cajera / Puesto:
+              </label>
+              <select onchange="changeClosingCashier(this.value)" class="form-input" style="width:100%; background:#131b2e; color:#f3f4f6; border:1px solid rgba(255,255,255,0.15); padding:0.55rem; border-radius:8px; font-weight:600;">
+                <option value="ALL" ${selectedCashier === 'ALL' ? 'selected' : ''}>🏢 Todas las Cajas (Consolidado General)</option>
+                ${cashiers.map(c => `
+                  <option value="${c.id}" ${selectedCashier === c.id ? 'selected' : ''}>👤 ${c.fullName} (@${c.username})</option>
+                `).join('')}
+              </select>
             </div>
 
             <div style="background:rgba(11,15,25,0.6); padding:1.25rem; border-radius:12px; margin-bottom:1.25rem; border:1px solid rgba(255,255,255,0.1);">
@@ -2259,7 +2279,7 @@
                 <strong style="color:#a855f7;">${cd.totalDigitalVES.toLocaleString('es-VE', {minimumFractionDigits:2})} VES</strong>
               </div>
               <div style="border-top:1px solid rgba(255,255,255,0.15); padding-top:0.75rem; margin-top:0.75rem; display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-weight:700; color:#f3f4f6;">Gran Total Consolidado ($):</span>
+                <span style="font-weight:700; color:#f3f4f6;">Total Arqueo ($):</span>
                 <strong style="font-size:1.3rem; color:#f59e0b;">$${cd.grandTotalUSD.toFixed(2)} USD</strong>
               </div>
             </div>
@@ -2277,14 +2297,18 @@
 
     async function confirmClosing() {
       try {
+        const selectedCashier = state.closingCashierId || 'ALL';
         const res = await fetch(`${API_BASE}/api/payments/cash-closing`, {
           method: 'POST',
           headers: {'Content-Type':'application/json', Authorization:`Bearer ${state.token}`},
-          body: JSON.stringify({ notes: 'Cierre de caja diario ejecutado.' })
+          body: JSON.stringify({ 
+            notes: selectedCashier === 'ALL' ? 'Cierre consolidado general de caja.' : 'Cierre individual de puesto de caja.',
+            cashierId: selectedCashier
+          })
         });
         if (res.ok) {
           const data = await res.json();
-          alert(`✓ Cierre diario N° ${data.closingNumber} generado exitosamente por un total de $${data.grandTotalUSD} USD.`);
+          alert(`✓ Cierre N° ${data.closingNumber} generado exitosamente por un total de $${data.grandTotalUSD} USD.`);
           state.showClosingModal = false;
           render();
         } else {
