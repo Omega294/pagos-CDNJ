@@ -1,9 +1,5 @@
-# Configuración de Servidor Web (Apache / LiteSpeed) para CDNJ
+# cPanel & LiteSpeed Configuration for CDNJ
+# Python Passenger will automatically handle requests through passenger_wsgi.py
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /
-
-    # Reenviar todas las llamadas a la API REST (/api/...) hacia el servidor Python local
-    RewriteCond %{REQUEST_URI} ^/api/ [NC]
-    RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
 </IfModule>
