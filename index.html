@@ -522,7 +522,8 @@
         }
       } catch (err) {
         console.error(err);
-        if (errBox) errBox.innerHTML = `<span style="color:#ef4444;">Error de conexión con el servidor REST (${API_BASE || 'http://localhost:3000'}).</span>`;
+        const targetUrl = API_BASE ? `${API_BASE}/api/auth/login` : `${window.location.origin}/api/auth/login`;
+        if (errBox) errBox.innerHTML = `<span style="color:#ef4444;">Error al conectar con la API en <b>${targetUrl}</b>.<br><small style="color:#9ca3af;">Verifica que el backend Python (server.py) esté iniciado en el servidor.</small></span>`;
         if (btn) btn.innerText = 'Iniciar Sesión';
       }
     }
