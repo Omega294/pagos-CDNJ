@@ -951,6 +951,21 @@ def init_db():
     );
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ai_support_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        username TEXT NOT NULL,
+        user_role TEXT NOT NULL,
+        query TEXT NOT NULL,
+        response TEXT NOT NULL,
+        requires_code_change INTEGER DEFAULT 0,
+        admin_recommendation TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(user_id) REFERENCES users(id)
+    );
+    """)
+
     paper_defaults = [
         ('paper_start_number', '1000'),
         ('paper_end_number', '2000'),
@@ -1191,6 +1206,152 @@ def generate_next_guardian_code(conn):
                     max_num = num
     next_num = max_num + 1
     return f"REP-2026-{next_num:04d}"
+
+# ==============================================================================
+# AI ASSISTANT KNOWLEDGE & QUERY RESOLUTION ENGINE
+# ==============================================================================
+
+def generate_ai_assistant_response(query_text, user_roles, username):
+    q = (query_text or "").strip().lower()
+    user_role_str = "SUPERADMIN" if "SUPERADMIN" in user_roles else ("ADMINISTRADOR" if "ADMINISTRADOR" in user_roles else "CAJERA")
+
+    # 1. DETECCIÓN DE SOLICITUD DE CAMBIO DE CÓDIGO / PROGRAMACIÓN / REGLAS DEL SISTEMA
+    change_intent_patterns = [
+        (r"(modificar|cambiar|editar|tocar)\s+(el\s+|los\s+|la\s+)?(c[oó]digo|programaci[oó]n|backend|frontend|script|base de datos|tablas|recibo|recibos|factura)", "Modificación del núcleo de código, formato de recibos o base de datos."),
+        (r"(factur\w*|cobr\w*)\s+(en\s+)?agosto", "Solicitud para habilitar cobro de mensualidad en el mes de Agosto."),
+        (r"(matr[ií]cula)\s+(2027|pr[oó]ximo)", "Solicitud para habilitar o alterar la matrícula del año 2027-2028."),
+        (r"(permitir|habilitar)\s+(a\s+)?(la\s+)?cajera\s+(anular|borrar|resetear)", "Solicitud de ampliación de privilegios de anulación para el rol Cajera."),
+        (r"(quitar|desactivar|eliminar)\s+(la\s+)?contrase[nñ]a|modo\s+demo", "Solicitud para reactivar modo demo o retirar autenticación obligatoria."),
+        (r"(nuevo|agregar|a[nñ]adir)\s+(un\s+)?m[eé]todo\s+(de\s+)?pago|cripto|binance|zelle|paypal", "Solicitud de integración de nuevas pasarelas o métodos de pago financieros."),
+        (r"(cambiar|personalizar|modificar)\s+(el\s+)?formato\s+(del\s+)?(recibo|factura|membrete)", "Solicitud de rediseño o campos adicionales en el recibo de pago."),
+        (r"(cambiar|modificar|reprogramar)\s+(la\s+)?f[oó]rmula|c[aá]lculo\s+(de\s+)?beca", "Solicitud para alterar el algoritmo de cálculo de becas."),
+        (r"(cambiar|modificar|editar)\s+(la\s+)?tasa\s+(manualmente|a mano)\s+(la\s+)?cajera", "Solicitud para que la cajera edite la tasa de cambio arbitrariamente."),
+        (r"(agregar|a[nñ]adir|crear)\s+(un\s+)?(bot[oó]n|m[oó]dulo|pantalla|columna|campo)", "Solicitud de desarrollo de nueva interfaz o funcionalidad en el sistema.")
+    ]
+
+    for pattern, desc in change_intent_patterns:
+        if re.search(pattern, q):
+            requires_code_change = 1
+            admin_recommendation = (
+                f"📌 Solicitud detectada: {desc}\n"
+                f"👤 Usuario: {username} ({user_role_str})\n"
+                f"💬 Consulta original: \"{query_text}\"\n"
+                f"⚙️ Impacto Técnico: Requiere actualización en la arquitectura del sistema, reglas de negocio o controladores en server.py/index.html.\n"
+                f"💡 Recomendación Técnica: Evaluar si esta modificación cumple con los lineamientos administrativos del colegio CDNJ antes de desplegar un cambio en el código fuente."
+            )
+            response = (
+                f"⚠️ **Aviso del Asistente del Sistema:**\n\n"
+                f"Actualmente el sistema está configurado y programado bajo directivas institucionales estrictas del Colegio CDNJ. "
+                f"**No es posible realizar este cambio directamente desde la interfaz de usuario**, ya que implica una modificación en la programación y reglas fijas de la plataforma.\n\n"
+                f"✅ **Sin embargo, he registrado tu solicitud:** He enviado una notificación y recomendación técnica al **Superadministrador** con los detalles de tu consulta para que el equipo directivo evalúe si es factible incorporarlo en una futura actualización del sistema."
+            )
+            return response, requires_code_change, admin_recommendation
+
+    # 2. BASE DE CONOCIMIENTO DE OPERACIÓN DEL SISTEMA CDNJ
+    requires_code_change = 0
+    admin_recommendation = None
+
+    # 2.1 Adelanto de Pagos / Cancelar Año
+    if any(k in q for k in ["adelantar", "adelanto", "cancelar todo el año", "meses futuros", "pagar por adelantado", "cancelar año escolar"]):
+        response = (
+            "🎓 **Adelanto de Mensualidades y Cancelación del Año Escolar:**\n\n"
+            "El sistema permite a la cajera recibir pagos anticipados de dos formas:\n\n"
+            "1. **⏩ Botón 'Adelantar Pago':** Ubicado en la barra superior al seleccionar un estudiante. Abre un modal con todas las mensualidades futuras que aún no han sido facturadas en el reloj del sistema. Puedes seleccionar los meses que el representante desea cancelar por adelantado.\n"
+            "2. **🎓 Botón 'Cancelar Todo el Año Escolar':** Aparece junto a las cuotas del alumno. Al presionarlo, precarga automáticamente **todas las mensualidades restantes del año escolar hasta Julio 2027** en la lista de cobro en un solo paso.\n\n"
+            "📌 *Nota:* El año escolar actual finaliza en Julio 2027. La matrícula del período 2027-2028 se encuentra desactivada por política institucional."
+        )
+    # 2.2 Cobros y Caja
+    elif any(k in q for k in ["cobrar", "pago", "registrar pago", "como pago", "como cobro", "caja", "metodo de pago", "split"]):
+        response = (
+            "💳 **¿Cómo registrar un cobro en Caja?**\n\n"
+            "1. **Buscar al Estudiante o Representante:** En la barra de búsqueda de Caja escribe la cédula del representante, nombre o código del alumno.\n"
+            "2. **Seleccionar Cuotas:** Marca las cuotas que se cancelarán (Matrícula y/o Mensualidades). El sistema calculará el total en USD y en Bolívares a la tasa BCV del día.\n"
+            "3. **Método de Pago:** Puedes cobrar en Divisas (efectivo USD), Bolívares (efectivo VES), Pago Móvil, Punto de Venta o Transferencia. Si el pago es mixto (ej. parte en USD y parte en Pago Móvil), usa **'+ Dividir Pago'**.\n"
+            "4. **Referencia Bancaria:** Para pagos digitales, introduce los últimos dígitos del comprobante.\n"
+            "5. **Confirmar e Imprimir:** Presiona 'Confirmar y Emitir Recibo'. El sistema generará el recibo oficial con su correlativo único."
+        )
+    # 2.3 Anulación de Recibos
+    elif any(k in q for k in ["anular", "anulacion", "eliminar recibo", "corregir pago", "revertir"]):
+        response = (
+            "🚫 **Anulación de Recibos y Pagos:**\n\n"
+            "• **Permisos Requeridos:** Por seguridad financiera, la anulación de facturas está restringida exclusivamente a usuarios con rol **ADMINISTRADOR** o **SUPERADMIN**.\n"
+            "• **Procedimiento:**\n"
+            "  1. Ve a la pestaña **'Historial de Transacciones'**.\n"
+            "  2. Ubica la transacción y presiona el botón rojo **'Anular'**.\n"
+            "  3. Es **obligatorio escribir el motivo de anulación** (para auditoría contable).\n"
+            "• **Efecto Inmediato:** Al confirmar, el recibo queda marcado como ANULADO y todas las cuotas pagadas regresan automáticamente al estado **PENDIENTE** para poder ser cobradas correctamente."
+        )
+    # 2.4 Tasa de Cambio y BCV
+    elif any(k in q for k in ["tasa", "bcv", "dolar", "bolivares", "tipo de cambio"]):
+        response = (
+            "💵 **Gestión de Tasas de Cambio:**\n\n"
+            "• **Tasa Oficial BCV:** El sistema consulta y actualiza la tasa oficial del Banco Central de Venezuela todos los días hábiles.\n"
+            "• **Historial:** Puedes consultar el histórico de tasas en la pestaña **'Tasas y Aranceles'**.\n"
+            "• **Cálculo en Caja:** Todos los montos en USD se convierten a Bolívares en tiempo real aplicando la tasa oficial del día al momento del cobro."
+        )
+    # 2.5 Cierre de Caja
+    elif any(k in q for k in ["cierre de caja", "arqueo", "cuadre", "cerrar caja"]):
+        response = (
+            "🔒 **Cierre de Caja Diario:**\n\n"
+            "• **Ubicación:** Haz clic en el botón **'Cierre de Caja'** en la parte superior derecha del módulo de cobros.\n"
+            "• **Selección de Cajera:** Permite seleccionar la cajera específica a liquidar.\n"
+            "• **Arqueo Físico:** Introduce el conteo de billetes en efectivo (USD y Bolívares). El sistema comparará el efectivo real contra el registrado en el sistema y calculará si hay sobrante o faltante.\n"
+            "• **Reporte:** Al confirmar el cierre, se genera el comprobante de cierre diario con los totales físicos y electrónicos."
+        )
+    # 2.6 Año Escolar y Autofacturación
+    elif any(k in q for k in ["año escolar", "autofacturacion", "cuando se factura", "meses", "periodo"]):
+        response = (
+            "📅 **Estructura del Año Escolar CDNJ:**\n\n"
+            "• **Período Vigente:** Año Escolar **2026-2027**.\n"
+            "• **Primer Pago:** Matrícula / Inscripción escolar (código `MAT-2026-2027`).\n"
+            "• **Mensualidades:** Comprendidas desde **Septiembre 2026 hasta Julio 2027** (el mes de Agosto no se factura).\n"
+            "• **Autofacturación Automática:** El sistema genera las deudas del nuevo mes automáticamente el **día 1 de cada mes** para todos los estudiantes activos según su grado y porcentaje de beca."
+        )
+    # 2.7 Carga Masiva de Alumnos y Duplicados
+    elif any(k in q for k in ["carga masiva", "importar", "csv", "excel", "duplicados", "estudiantes repetidos"]):
+        response = (
+            "📥 **Carga Masiva de Alumnos y Control Anti-Duplicados:**\n\n"
+            "• **Formatos Aceptados:** Archivos Excel (`.xlsx`, `.xls`) y `.csv`.\n"
+            "• **Protección Anti-Duplicados:** Si cargas el mismo archivo dos veces o con alumnos repetidos, el sistema compara por Cédula o por (Nombre + Apellido + Grado). Si ya existe, **no crea duplicados ni duplica cobros**; únicamente actualiza los datos que hayan cambiado.\n"
+            "• **Generación Automática:** Los estudiantes reciben su código `EST-2026-XXXX` y los representantes su código `REP-2026-XXXX` de forma automática correlativa."
+        )
+    # 2.8 Usuarios, Contraseñas y Modo Demo
+    elif any(k in q for k in ["usuario", "contraseña", "password", "clave", "modo demo", "credenciales"]):
+        response = (
+            "🔐 **Seguridad y Acceso al Sistema:**\n\n"
+            "• **Autenticación Obligatoria:** El acceso en modo demo está desactivado por seguridad. Es obligatorio ingresar usuario y contraseña.\n"
+            "• **Administración de Cuentas:** Exclusiva para el **SUPERADMIN** desde la pestaña **'Usuarios'**, donde puede crear personal, activar/desactivar accesos y resetear contraseñas."
+        )
+    # 2.9 Máquina del Tiempo
+    elif any(k in q for k in ["maquina del tiempo", "simulacion", "fecha simulada", "adelantar fecha"]):
+        response = (
+            "⏳ **Máquina del Tiempo (Control Temporal):**\n\n"
+            "• **Acceso Exclusivo:** Solo es visible y utilizable por el rol **SUPERADMIN** con fines de prueba y auditoría.\n"
+            "• **Función:** Permite avanzar días o meses para verificar cómo el sistema genera automáticamente las mensualidades de los meses futuros y probar los estados de mora."
+        )
+    # 2.10 Saludos y Bienvenida
+    elif any(k in q for k in ["hola", "buenos dias", "buenas tardes", "buenas noches", "ayuda", "asistente", "quien eres"]):
+        response = (
+            f"👋 ¡Hola, **{username}**! Soy el **Asistente Virtual Inteligente de la Plataforma CDNJ**.\n\n"
+            f"Tu rol actual es **{user_role_str}**. Puedo responder preguntas sobre:\n"
+            "• Cómo cobrar, registrar métodos de pago y emitir recibos.\n"
+            "• Cómo adelantar mensualidades o cancelar todo el año escolar.\n"
+            "• Cómo funciona la autofacturación, la tasa BCV y el cierre de caja.\n"
+            "• Carga masiva de estudiantes y control anti-duplicados.\n"
+            "• Dudas operativas de cualquier módulo del colegio.\n\n"
+            "¿En qué puedo ayudarte hoy?"
+        )
+    # 2.11 Fallback general
+    else:
+        response = (
+            f"ℹ️ **Información del Sistema CDNJ:**\n\n"
+            f"Has consultado sobre: *\"{query_text}\"*.\n\n"
+            f"El sistema CDNJ está diseñado para gestionar cobros escolares, cálculo automático en divisas y bolívares a tasa BCV, cierres de caja y conciliación contable.\n\n"
+            f"Si tu consulta es sobre un procedimiento operativo (ej. cobros, adelanto de cuotas, facturación o reportes), indícamelo con más detalle para guiarte paso a paso. "
+            f"Si tu consulta involucra una modificación técnica de las reglas de la plataforma, he dejado nota al Superadministrador para su evaluación."
+        )
+
+    return response, requires_code_change, admin_recommendation
 
 class CDNJHandler(http.server.BaseHTTPRequestHandler):
 
@@ -2622,6 +2783,57 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             guardians = [{"id": r[0], "fullName": r[1], "docId": r[2], "guardianCode": r[3], "phone": r[4]} for r in rows]
             conn.close()
             return self.send_json({"guardians": guardians})
+
+        # AI Support Logs (Superadmin Only)
+        if path == "/api/support/logs":
+            user = self.get_auth_user()
+            user_roles = user.get("roles", []) if user else []
+            if not user or ("SUPERADMIN" not in user_roles and user.get("username") != "superadmin"):
+                return self.send_json({"error": "Acceso Denegado", "message": "Solo el SUPERADMIN puede consultar las bitácoras y recomendaciones de la IA."}, 403)
+
+            filter_mode = query.get("filter", ["ALL"])[0].strip().upper()
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+
+            sql = "SELECT id, user_id, username, user_role, query, response, requires_code_change, admin_recommendation, created_at FROM ai_support_logs"
+            if filter_mode == "CODE_CHANGES":
+                sql += " WHERE requires_code_change = 1"
+            sql += " ORDER BY created_at DESC LIMIT 150;"
+
+            c.execute(sql)
+            rows = c.fetchall()
+
+            c.execute("SELECT COUNT(*), COALESCE(SUM(requires_code_change), 0) FROM ai_support_logs;")
+            stats = c.fetchone()
+            total_count = stats[0] or 0
+            code_changes_count = stats[1] or 0
+
+            today_prefix = datetime.now().strftime("%Y-%m-%d")
+            c.execute("SELECT COUNT(*) FROM ai_support_logs WHERE created_at LIKE ?;", (f"{today_prefix}%",))
+            today_count = c.fetchone()[0] or 0
+
+            conn.close()
+
+            logs = [{
+                "id": r[0],
+                "userId": r[1],
+                "username": r[2],
+                "userRole": r[3],
+                "query": r[4],
+                "response": r[5],
+                "requiresCodeChange": bool(r[6]),
+                "adminRecommendation": r[7],
+                "createdAt": r[8]
+            } for r in rows]
+
+            return self.send_json({
+                "logs": logs,
+                "stats": {
+                    "total": total_count,
+                    "codeChanges": code_changes_count,
+                    "today": today_count
+                }
+            })
 
         # SERVE FRONTEND INDEX HTML
         if path == "/" or path == "/index.html":
@@ -4116,6 +4328,55 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "updatedStudents": updated_students,
                 "createdGuardians": created_guardians
             })
+
+        # AI Support Ask Question
+        if path == "/api/support/ask":
+            user = self.get_auth_user()
+            if not user:
+                return self.send_json({"error": "No autorizado"}, 401)
+
+            query_text = (body.get("query") or "").strip()
+            if not query_text:
+                return self.send_json({"error": "La consulta no puede estar vacía"}, 400)
+
+            user_roles = user.get("roles", [])
+            username = user.get("username", "Usuario")
+            user_id = user.get("userId", "u_anon")
+
+            response_text, requires_code_change, admin_rec = generate_ai_assistant_response(query_text, user_roles, username)
+
+            user_role_str = "SUPERADMIN" if "SUPERADMIN" in user_roles else ("ADMINISTRADOR" if "ADMINISTRADOR" in user_roles else "CAJERA")
+            now_iso = datetime.now().isoformat()
+            log_id = f"ai_{uuid.uuid4().hex[:8]}"
+
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("""
+            INSERT INTO ai_support_logs (id, user_id, username, user_role, query, response, requires_code_change, admin_recommendation, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+            """, (log_id, user_id, username, user_role_str, query_text, response_text, 1 if requires_code_change else 0, admin_rec, now_iso))
+            conn.commit()
+            conn.close()
+
+            return self.send_json({
+                "success": True,
+                "response": response_text,
+                "requiresCodeChange": bool(requires_code_change)
+            })
+
+        # Clear AI Support Logs (Superadmin Only)
+        if path == "/api/support/logs/clear":
+            user = self.get_auth_user()
+            user_roles = user.get("roles", []) if user else []
+            if not user or ("SUPERADMIN" not in user_roles and user.get("username") != "superadmin"):
+                return self.send_json({"error": "Acceso Denegado"}, 403)
+
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("DELETE FROM ai_support_logs;")
+            conn.commit()
+            conn.close()
+            return self.send_json({"success": True, "message": "Bitácora de IA limpiada con éxito."})
 
         return self.send_json({"error": "Endpoint POST no encontrado"}, 404)
 

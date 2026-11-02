@@ -248,7 +248,13 @@
       restoringBackup: false,
       timeSimulationData: null,
       loadingTimeSimulation: false,
-      showTimeMachineModal: false
+      showTimeMachineModal: false,
+      showAiChat: false,
+      aiChatMessages: [],
+      aiChatLoading: false,
+      aiLogsData: null,
+      aiLogsFilter: 'ALL',
+      aiLogsLoading: false
     };
 
     function setAuth(token, user) {
@@ -333,6 +339,10 @@
                     <button onclick="state.activeTab='users'; loadUsersData();" class="btn ${state.activeTab === 'users' ? 'btn-primary' : 'btn-secondary'}" style="justify-content:flex-start;">
                       <i data-lucide="users"></i> Usuarios & Claves
                       <span style="font-size:0.6rem; background:rgba(239,68,68,0.2); color:#f87171; padding:2px 5px; border-radius:4px; margin-left:auto;">SA</span>
+                    </button>
+                    <button onclick="state.activeTab='ai_support'; render(); loadAiSupportLogs();" class="btn ${state.activeTab === 'ai_support' ? 'btn-primary' : 'btn-secondary'}" style="justify-content:flex-start;">
+                      <i data-lucide="bot"></i> Bitácora IA & Sugerencias
+                      <span style="font-size:0.6rem; background:rgba(139,92,246,0.3); color:#c084fc; padding:2px 5px; border-radius:4px; margin-left:auto;">SA</span>
                     </button>
                   ` : ''}
                 </nav>
@@ -424,6 +434,7 @@
           ${state.showPaperCheckModal ? renderPaperCheckModalHTML() : ''}
           ${state.showPaperBatchModal ? renderPaperBatchModalHTML() : ''}
           ${state.showAdvanceModal ? renderAdvanceModalHTML() : ''}
+          ${renderAiChatFloatingWidgetHTML()}
         `;
 
         try { if (typeof lucide !== 'undefined' && lucide && lucide.createIcons) lucide.createIcons(); } catch(e) {}
@@ -557,6 +568,10 @@
       if (state.activeTab === 'users') {
         if (!state.user?.roles || !state.user.roles.includes('SUPERADMIN')) return renderDenied('SUPERADMIN');
         return renderUsersPanel();
+      }
+      if (state.activeTab === 'ai_support') {
+        if (!state.user?.roles || !state.user.roles.includes('SUPERADMIN')) return renderDenied('SUPERADMIN');
+        return renderAiSupportPanel();
       }
     }
 
@@ -3886,6 +3901,369 @@
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // AI ASSISTANT CHAT WIDGET & SUPERADMIN LOGS VIEWER
+    // =========================================================================
+
+    function formatAiResponseMarkdown(txt) {
+      if (!txt) return '';
+      return txt
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>')
+        .replace(/• /g, '&bull; ');
+    }
+
+    function scrollAiChatToBottom() {
+      const el = document.getElementById('ai_chat_scroll_area');
+      if (el) el.scrollTop = el.scrollHeight;
+    }
+
+    function sendAiChatQuickPrompt(text) {
+      const input = document.getElementById('ai_chat_input_text');
+      if (input) input.value = text;
+      submitAiChatQuery();
+    }
+
+    async function submitAiChatQuery() {
+      const input = document.getElementById('ai_chat_input_text');
+      if (!input) return;
+      const q = input.value.trim();
+      if (!q) return;
+
+      input.value = '';
+      const nowStr = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
+      state.aiChatMessages.push({ role: 'user', text: q, time: nowStr });
+      state.aiChatLoading = true;
+      render();
+      setTimeout(scrollAiChatToBottom, 50);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/support/ask`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${state.token}`
+          },
+          body: JSON.stringify({ query: q })
+        });
+        const data = await res.json();
+        state.aiChatLoading = false;
+        if (res.ok) {
+          state.aiChatMessages.push({
+            role: 'assistant',
+            text: data.response,
+            requiresCodeChange: data.requiresCodeChange,
+            time: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+          });
+        } else {
+          state.aiChatMessages.push({
+            role: 'assistant',
+            text: `⚠️ Error: ${data.error || 'No se pudo procesar la consulta.'}`,
+            time: nowStr
+          });
+        }
+      } catch (err) {
+        state.aiChatLoading = false;
+        state.aiChatMessages.push({
+          role: 'assistant',
+          text: '⚠️ Error de conexión con el servidor del asistente.',
+          time: nowStr
+        });
+      }
+      render();
+      setTimeout(scrollAiChatToBottom, 100);
+    }
+
+    function renderAiChatFloatingWidgetHTML() {
+      if (!state.user) return '';
+      const messages = state.aiChatMessages || [];
+      const isOpen = state.showAiChat;
+
+      return `
+        <!-- Floating Chat Toggle Button & Panel -->
+        <div style="position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; align-items:flex-end;">
+          ${isOpen ? `
+            <!-- Chat Panel Drawer -->
+            <div class="glass-panel" style="width:400px; max-width:calc(100vw - 32px); height:550px; max-height:calc(100vh - 100px); display:flex; flex-direction:column; border-radius:18px; border:1px solid rgba(139,92,246,0.35); box-shadow:0 25px 60px rgba(0,0,0,0.65); background:rgba(19,27,46,0.96); backdrop-filter:blur(20px); margin-bottom:14px; overflow:hidden;">
+              
+              <!-- Header -->
+              <div style="padding:0.9rem 1.1rem; background:linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25)); border-bottom:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                  <div style="width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(139,92,246,0.4);">
+                    <i data-lucide="bot" size="20" color="#fff"></i>
+                  </div>
+                  <div>
+                    <div style="font-weight:800; font-size:0.925rem; color:#f3f4f6; display:flex; align-items:center; gap:0.4rem;">
+                      Asistente CDNJ <span style="font-size:0.65rem; background:rgba(16,185,129,0.2); color:#34d399; border:1px solid rgba(16,185,129,0.3); padding:1px 6px; border-radius:9999px;">Online 🟢</span>
+                    </div>
+                    <div style="font-size:0.72rem; color:#9ca3af;">Resuelve dudas sobre cobros y reglas</div>
+                  </div>
+                </div>
+                <button onclick="state.showAiChat = false; render();" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.5rem; border-radius:8px; font-size:0.8rem;" title="Cerrar Asistente">✕</button>
+              </div>
+
+              <!-- Message Thread Body -->
+              <div id="ai_chat_scroll_area" style="flex:1; padding:1rem; overflow-y:auto; display:flex; flex-direction:column; gap:0.85rem;">
+                ${messages.length === 0 ? `
+                  <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:1rem; text-align:center;">
+                    <div style="font-size:1.8rem; margin-bottom:0.4rem;">🤖</div>
+                    <h4 style="font-size:0.9rem; font-weight:800; color:#e0e7ff; margin:0 0 0.3rem 0;">¡Hola, ${state.user?.username || 'Usuario'}!</h4>
+                    <p style="font-size:0.78rem; color:#9ca3af; margin:0 0 0.8rem 0; line-height:1.4;">
+                      Soy tu asistente inteligente. Pregúntame sobre cómo cobrar, adelantar mensualidades, anular facturas, tasa BCV o cualquier regla del sistema.
+                    </p>
+                    <div style="font-size:0.7rem; font-weight:700; color:#818cf8; text-transform:uppercase; margin-bottom:0.5rem;">Preguntas Rápidas Frecuentes:</div>
+                    <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                      <button type="button" onclick="sendAiChatQuickPrompt('¿Cómo adelanto mensualidades o cancelo todo el año escolar?')" class="btn btn-sm btn-secondary" style="font-size:0.75rem; text-align:left; justify-content:flex-start; padding:0.4rem 0.6rem;">
+                        👉 ¿Cómo adelantar cuotas o cancelar el año?
+                      </button>
+                      <button type="button" onclick="sendAiChatQuickPrompt('¿Cómo registrar un cobro con pago mixto y tasa BCV?')" class="btn btn-sm btn-secondary" style="font-size:0.75rem; text-align:left; justify-content:flex-start; padding:0.4rem 0.6rem;">
+                        👉 ¿Cómo cobrar con tasa BCV y pagos mixtos?
+                      </button>
+                      <button type="button" onclick="sendAiChatQuickPrompt('¿Quién puede anular un recibo y cómo se hace?')" class="btn btn-sm btn-secondary" style="font-size:0.75rem; text-align:left; justify-content:flex-start; padding:0.4rem 0.6rem;">
+                        👉 ¿Quién puede anular un recibo?
+                      </button>
+                      <button type="button" onclick="sendAiChatQuickPrompt('¿Cómo funciona la carga masiva y control de duplicados?')" class="btn btn-sm btn-secondary" style="font-size:0.75rem; text-align:left; justify-content:flex-start; padding:0.4rem 0.6rem;">
+                        👉 ¿Cómo funciona la carga masiva anti-duplicados?
+                      </button>
+                    </div>
+                  </div>
+                ` : ''}
+
+                <!-- Render Messages -->
+                ${messages.map(m => `
+                  <div style="display:flex; flex-direction:column; align-items:${m.role === 'user' ? 'flex-end' : 'flex-start'};">
+                    <div style="max-width:88%; padding:0.7rem 0.9rem; border-radius:14px; font-size:0.825rem; line-height:1.45; ${m.role === 'user' ? 'background:linear-gradient(135deg, #4f46e5, #4338ca); color:#fff; border-bottom-right-radius:4px;' : 'background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); color:#f3f4f6; border-bottom-left-radius:4px;'}">
+                      ${formatAiResponseMarkdown(m.text)}
+                    </div>
+                    ${m.requiresCodeChange ? `
+                      <div style="font-size:0.68rem; color:#facc15; background:rgba(234,179,8,0.12); border:1px solid rgba(234,179,8,0.3); padding:0.25rem 0.55rem; border-radius:6px; margin-top:0.3rem; display:flex; align-items:center; gap:0.3rem;">
+                        <i data-lucide="alert-triangle" size="12"></i> Solicitud registrada para el Superadmin
+                      </div>
+                    ` : ''}
+                    <span style="font-size:0.65rem; color:#6b7280; margin-top:0.2rem;">${m.time || ''}</span>
+                  </div>
+                `).join('')}
+
+                ${state.aiChatLoading ? `
+                  <div style="display:flex; align-items:center; gap:0.5rem; color:#c084fc; font-size:0.78rem; font-style:italic;">
+                    <div style="width:8px; height:8px; border-radius:50%; background:#c084fc;"></div>
+                    El Asistente está consultando la estructura del sistema...
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Input Bar Footer -->
+              <div style="padding:0.75rem; border-top:1px solid rgba(255,255,255,0.08); background:rgba(11,15,25,0.9); display:flex; gap:0.5rem;">
+                <input id="ai_chat_input_text" type="text" class="input-field" placeholder="Escribe tu consulta sobre el sistema..." style="font-size:0.825rem; padding:0.55rem 0.8rem;" onkeydown="if(event.key==='Enter') submitAiChatQuery();" />
+                <button type="button" onclick="submitAiChatQuery();" class="btn btn-primary" style="padding:0.55rem 0.9rem; border-radius:8px; background:linear-gradient(135deg, #6366f1, #8b5cf6);">
+                  <i data-lucide="send" size="15"></i>
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Floating Toggle Button -->
+          <button type="button" onclick="state.showAiChat = !state.showAiChat; render(); setTimeout(scrollAiChatToBottom, 100);" class="btn" style="padding:0.65rem 1.15rem; border-radius:9999px; background:linear-gradient(135deg, #6366f1, #8b5cf6); color:#fff; font-weight:700; font-size:0.875rem; display:flex; align-items:center; gap:0.55rem; box-shadow:0 8px 25px rgba(99,102,241,0.45); border:1px solid rgba(255,255,255,0.2); cursor:pointer;">
+            <i data-lucide="bot" size="18"></i>
+            <span>Asistente IA CDNJ</span>
+            <span style="width:8px; height:8px; border-radius:50%; background:#34d399; box-shadow:0 0 8px #34d399;"></span>
+          </button>
+        </div>
+      `;
+    }
+
+    async function loadAiSupportLogs(filter = 'ALL') {
+      state.aiLogsLoading = true;
+      state.aiLogsFilter = filter;
+      render();
+      try {
+        const res = await fetch(`${API_BASE}/api/support/logs?filter=${filter}`, {
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          state.aiLogsData = data;
+        } else {
+          alert(data.message || 'Error cargando bitácora de IA.');
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        state.aiLogsLoading = false;
+        render();
+      }
+    }
+
+    async function clearAiSupportLogs() {
+      if (!confirm('¿Estás seguro de que deseas vaciar toda la bitácora de soporte de IA?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/support/logs/clear`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${state.token}` }
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('✓ ' + data.message);
+          loadAiSupportLogs();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function renderAiSupportPanel() {
+      const isSuperadmin = state.user?.roles && state.user.roles.includes('SUPERADMIN');
+      if (!isSuperadmin) return renderDenied('SUPERADMIN');
+
+      const data = state.aiLogsData || { logs: [], stats: { total: 0, codeChanges: 0, today: 0 } };
+      const logs = data.logs || [];
+      const stats = data.stats || { total: 0, codeChanges: 0, today: 0 };
+      const currentFilter = state.aiLogsFilter || 'ALL';
+
+      return `
+        <div style="max-width:1150px; margin:0 auto;">
+          <!-- HEADER -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem;">
+            <div>
+              <div style="display:flex; align-items:center; gap:0.6rem; margin-bottom:0.25rem;">
+                <h2 style="font-size:1.6rem; font-weight:800; color:#f3f4f6; margin:0;">🤖 Centro de Soporte IA & Sugerencias Técnicas</h2>
+                <span class="badge badge-danger" style="font-size:0.7rem; font-weight:800;">SUPERADMIN</span>
+              </div>
+              <p style="color:#9ca3af; font-size:0.9rem; margin:0;">
+                Auditoría en tiempo real de consultas realizadas por cajeras y personal, con detección automática de solicitudes de cambios de código y recomendaciones técnicas.
+              </p>
+            </div>
+            <div style="display:flex; gap:0.6rem;">
+              <button onclick="loadAiSupportLogs('${currentFilter}')" class="btn btn-secondary" style="font-weight:700;">
+                <i data-lucide="refresh-cw"></i> Actualizar
+              </button>
+              <button onclick="clearAiSupportLogs()" class="btn btn-danger" style="font-weight:700;">
+                <i data-lucide="trash-2"></i> Limpiar Bitácora
+              </button>
+            </div>
+          </div>
+
+          <!-- RESUMEN STATS -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+            <div class="glass-card" style="padding:1.1rem; border-left:4px solid #6366f1;">
+              <span style="font-size:0.8rem; color:#9ca3af; font-weight:600; text-transform:uppercase;">Total Consultas Registradas</span>
+              <h3 style="font-size:1.75rem; font-weight:800; color:#818cf8; margin-top:0.35rem;">${stats.total}</h3>
+              <span style="font-size:0.75rem; color:#9ca3af;">Interacciones de usuarios con el asistente</span>
+            </div>
+            <div class="glass-card" style="padding:1.1rem; border-left:4px solid #eab308; background:rgba(234,179,8,0.04);">
+              <span style="font-size:0.8rem; color:#facc15; font-weight:700; text-transform:uppercase;">💡 Solicitudes de Código / Mejoras</span>
+              <h3 style="font-size:1.75rem; font-weight:800; color:#facc15; margin-top:0.35rem;">${stats.codeChanges}</h3>
+              <span style="font-size:0.75rem; color:#9ca3af;">Peticiones con recomendación técnica generada</span>
+            </div>
+            <div class="glass-card" style="padding:1.1rem; border-left:4px solid #10b981;">
+              <span style="font-size:0.8rem; color:#9ca3af; font-weight:600; text-transform:uppercase;">Consultas de Hoy</span>
+              <h3 style="font-size:1.75rem; font-weight:800; color:#34d399; margin-top:0.35rem;">${stats.today}</h3>
+              <span style="font-size:0.75rem; color:#9ca3af;">Actividad en la jornada actual</span>
+            </div>
+          </div>
+
+          <!-- FILTROS -->
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
+            <div style="display:flex; gap:0.5rem;">
+              <button onclick="loadAiSupportLogs('ALL')" class="btn btn-sm ${currentFilter === 'ALL' ? 'btn-primary' : 'btn-secondary'}">
+                Todas las Consultas (${stats.total})
+              </button>
+              <button onclick="loadAiSupportLogs('CODE_CHANGES')" class="btn btn-sm ${currentFilter === 'CODE_CHANGES' ? 'btn-primary' : 'btn-secondary'}" style="${currentFilter === 'CODE_CHANGES' ? 'background:#eab308; color:#0b0f19; font-weight:800;' : 'color:#facc15;'}">
+                ⚠️ Solo Solicitudes de Cambio de Código (${stats.codeChanges})
+              </button>
+            </div>
+            <span style="font-size:0.8rem; color:#9ca3af;">Mostrando últimas ${logs.length} interacciones</span>
+          </div>
+
+          <!-- LISTA DE INTERACCIONES -->
+          <div style="display:flex; flex-direction:column; gap:1rem;">
+            ${state.aiLogsLoading ? `
+              <div class="glass-panel" style="padding:3rem; text-align:center; color:#9ca3af;">
+                <i data-lucide="loader-2" class="spin" size="32" style="margin-bottom:0.5rem; color:#6366f1;"></i>
+                <p>Cargando bitácora de soporte IA...</p>
+              </div>
+            ` : (logs.length === 0 ? `
+              <div class="glass-panel" style="padding:3rem; text-align:center; color:#9ca3af;">
+                <i data-lucide="inbox" size="40" style="margin-bottom:0.5rem; opacity:0.4;"></i>
+                <h4 style="color:#f3f4f6; margin-bottom:0.3rem;">No hay registros en la bitácora</h4>
+                <p style="font-size:0.85rem; margin:0;">Las preguntas que realicen las cajeras o administradores en el Asistente IA aparecerán reflejadas aquí automáticamente.</p>
+              </div>
+            ` : logs.map(log => `
+              <div class="glass-panel" style="padding:1.25rem 1.5rem; border:1px solid ${log.requiresCodeChange ? 'rgba(234,179,8,0.4)' : 'rgba(255,255,255,0.08)'}; background:${log.requiresCodeChange ? 'linear-gradient(180deg, rgba(234,179,8,0.04), rgba(19,27,46,0.8))' : 'rgba(19,27,46,0.7)'}; border-radius:14px;">
+                
+                <!-- Encabezado de la tarjeta -->
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                  <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <div style="width:36px; height:36px; border-radius:10px; background:rgba(99,102,241,0.2); border:1px solid rgba(99,102,241,0.3); display:flex; align-items:center; justify-content:center; color:#818cf8; font-weight:800; font-size:0.9rem;">
+                      ${(log.username || 'U')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <div style="font-weight:800; font-size:0.95rem; color:#f3f4f6; display:flex; align-items:center; gap:0.4rem;">
+                        @${log.username}
+                        <span class="badge ${log.userRole === 'SUPERADMIN' ? 'badge-danger' : (log.userRole === 'ADMINISTRADOR' ? 'badge-primary' : 'badge-success')}" style="font-size:0.65rem;">
+                          ${log.userRole}
+                        </span>
+                      </div>
+                      <span style="font-size:0.75rem; color:#9ca3af;">
+                        <i data-lucide="clock" size="12" style="display:inline; vertical-align:middle;"></i> ${log.createdAt.replace('T', ' ').substring(0, 16)}
+                      </span>
+                    </div>
+                  </div>
+
+                  ${log.requiresCodeChange ? `
+                    <span class="badge" style="background:rgba(234,179,8,0.2); color:#facc15; border:1px solid rgba(234,179,8,0.5); font-weight:800; font-size:0.72rem; padding:0.3rem 0.65rem;">
+                      ⚠️ SOLICITUD DE CAMBIO DE PROGRAMACIÓN
+                    </span>
+                  ` : `
+                    <span class="badge badge-secondary" style="font-size:0.7rem; color:#9ca3af;">
+                      ✓ Consulta Operativa
+                    </span>
+                  `}
+                </div>
+
+                <!-- Pregunta del usuario -->
+                <div style="margin-bottom:0.85rem;">
+                  <div style="font-size:0.75rem; font-weight:700; color:#818cf8; text-transform:uppercase; margin-bottom:0.3rem;">
+                    💬 Pregunta del Usuario:
+                  </div>
+                  <div style="background:rgba(99,102,241,0.08); border-left:3px solid #6366f1; padding:0.75rem 1rem; border-radius:6px; font-size:0.9rem; color:#f3f4f6;">
+                    "${log.query}"
+                  </div>
+                </div>
+
+                <!-- Respuesta del asistente -->
+                <div style="margin-bottom:0.85rem;">
+                  <div style="font-size:0.75rem; font-weight:700; color:#9ca3af; text-transform:uppercase; margin-bottom:0.3rem;">
+                    🤖 Respuesta Brindada por el Asistente:
+                  </div>
+                  <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:0.85rem 1rem; border-radius:8px; font-size:0.85rem; line-height:1.5; color:#d1d5db;">
+                    ${formatAiResponseMarkdown(log.response)}
+                  </div>
+                </div>
+
+                <!-- Si requiere cambio: Recomendación Técnica destacada -->
+                ${(log.requiresCodeChange && log.adminRecommendation) ? `
+                  <div style="background:linear-gradient(135deg, rgba(234,179,8,0.08), rgba(139,92,246,0.08)); border:1px solid rgba(234,179,8,0.35); border-radius:10px; padding:0.9rem 1.1rem; margin-top:0.75rem;">
+                    <div style="color:#facc15; font-weight:800; font-size:0.85rem; display:flex; align-items:center; gap:0.4rem; margin-bottom:0.4rem;">
+                      <i data-lucide="lightbulb" size="16"></i> Recomendación Técnica de la IA para el Superadministrador:
+                    </div>
+                    <div style="font-size:0.825rem; color:#fef08a; white-space:pre-line; line-height:1.5;">
+                      ${log.adminRecommendation}
+                    </div>
+                  </div>
+                ` : ''}
+
+              </div>
+            `).join(''))}
           </div>
         </div>
       `;
