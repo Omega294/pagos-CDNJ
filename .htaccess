@@ -1,7 +1,4 @@
 # BEGIN cPanel-generated php ini directives, do not edit
-# Manual editing of this file may result in unexpected behavior.
-# To make changes to this file, use the cPanel MultiPHP INI Editor (Home >> Software >> MultiPHP INI Editor)
-# For more information, read our documentation (https://go.cpanel.net/EA4ModifyINI)
 <IfModule php8_module>
    php_value error_log "/home/janlawto/logs/php.error.log"
    php_flag log_errors On
@@ -12,17 +9,4 @@
 </IfModule>
 # END cPanel-generated php ini directives, do not edit
 
-<IfModule mod_autoindex.c>
-   Options -Indexes
-</IfModule>
-DirectoryIndex index.html index.php
-
-# --- REDIRECCIÓN DE LA API AL PUERTO 3000 (PYTHON) ---
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    
-    # Si la petición empieza con /api/
-    RewriteCond %{REQUEST_URI} ^/api/
-    # Redirígela internamente al servidor Python que corre en el puerto 3000
-    RewriteRule ^api/(.*)$ http://127.0.0.1:3000/api/$1 [P,L]
-</IfModule>
+DirectoryIndex index.html
