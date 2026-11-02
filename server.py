@@ -3966,7 +3966,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             conn.close()
             return self.send_json({"success": True, "message": "Estudiante inactivado/eliminado correctamente"})
 
-        # Batch Import Students & Representatives (CSV / Excel)
+        # Batch Import Students & Representatives (CSV / Excel) con Prevención Inteligente de Duplicados
         if path == "/api/students/batch-import":
             user = self.get_auth_user()
             if not user:
@@ -3980,7 +3980,9 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             c = conn.cursor()
             
             created_guardians = 0
+            updated_guardians = 0
             created_students = 0
+            updated_students = 0
             
             for rec in records:
                 g_doc_id = str(rec.get("repDocId") or rec.get("cedula_representante") or rec.get("Cedula_Representante") or rec.get("cedula_rep") or rec.get("Cedula Rep") or "").strip()
@@ -4001,6 +4003,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 if not s_first_name:
                     continue
                     
+                # 1. BÚSQUEDA Y PREVENCIÓN DE DUPLICADOS EN REPRESENTANTE
                 guardian_id = None
                 if g_doc_id or g_name:
                     if g_doc_id:
@@ -4008,6 +4011,12 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                         g_row = c.fetchone()
                         if g_row:
                             guardian_id = g_row[0]
+                    if not guardian_id and g_name:
+                        c.execute("SELECT id FROM guardians WHERE LOWER(TRIM(full_name)) = LOWER(TRIM(?)) LIMIT 1;", (g_name,))
+                        g_row = c.fetchone()
+                        if g_row:
+                            guardian_id = g_row[0]
+
                     if not guardian_id:
                         guardian_id = f"g_{uuid.uuid4().hex[:8]}"
                         g_code = generate_next_guardian_code(conn)
@@ -4016,29 +4025,95 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                         VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE');
                         """, (guardian_id, g_doc_id or f"V-{uuid.uuid4().hex[:8]}", g_name or "Representante", g_email, g_phone, "", g_code))
                         created_guardians += 1
+                    else:
+                        # Si ya existe, actualiza teléfono y correo si fueron provistos
+                        if g_phone or g_email:
+                            c.execute("""
+                            UPDATE guardians 
+                            SET phone = CASE WHEN ? != '' THEN ? ELSE phone END,
+                                email = CASE WHEN ? != '' THEN ? ELSE email END
+                            WHERE id = ?;
+                            """, (g_phone, g_phone, g_email, g_email, guardian_id))
+                            updated_guardians += 1
                         
-                student_id = f"s_{uuid.uuid4().hex[:8]}"
-                s_code = generate_next_student_code(conn)
-                c.execute("""
-                INSERT INTO students (id, student_code, doc_id, first_name, last_name, grade, section, status, is_scholarship, scholarship_pct, scholarship_reason)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?);
-                """, (student_id, s_code, s_doc_id or None, s_first_name, s_last_name, s_grade, s_section, is_sch, sch_pct, sch_reason))
-                created_students += 1
+                # 2. BÚSQUEDA Y PREVENCIÓN DE DUPLICADOS EN ESTUDIANTE
+                existing_student = None
                 
-                # Asignar paquete completo de deudas del año escolar:
-                # 1. Matrícula / Inscripción escolar (ej. MAT-2026-2027)
-                # 2. Mensualidades acumuladas desde Septiembre hasta el mes actual (ej. Sep y Oct), según grado y beca
+                # Criterio A: Por Cédula/Documento del estudiante (si se proveyó)
+                if s_doc_id:
+                    c.execute("SELECT id, student_code FROM students WHERE doc_id = ?;", (s_doc_id,))
+                    existing_student = c.fetchone()
+                
+                # Criterio B: Por Nombre + Apellido + Grado (insensible a mayúsculas/espacios)
+                if not existing_student and s_first_name and s_last_name:
+                    c.execute("""
+                    SELECT id, student_code FROM students 
+                    WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(?))
+                      AND LOWER(TRIM(last_name)) = LOWER(TRIM(?))
+                      AND LOWER(TRIM(grade)) = LOWER(TRIM(?))
+                    LIMIT 1;
+                    """, (s_first_name, s_last_name, s_grade))
+                    existing_student = c.fetchone()
+                
+                # Criterio C: Si no tiene cédula pero coincide el mismo representante y Nombre + Apellido
+                if not existing_student and guardian_id and s_first_name and s_last_name:
+                    c.execute("""
+                    SELECT s.id, s.student_code
+                    FROM students s
+                    JOIN student_guardians sg ON s.id = sg.student_id
+                    WHERE sg.guardian_id = ?
+                      AND LOWER(TRIM(s.first_name)) = LOWER(TRIM(?))
+                      AND LOWER(TRIM(s.last_name)) = LOWER(TRIM(?))
+                    LIMIT 1;
+                    """, (guardian_id, s_first_name, s_last_name))
+                    existing_student = c.fetchone()
+
+                if existing_student:
+                    # Estudiante ya registrado: Actualizamos información sin duplicar
+                    student_id = existing_student[0]
+                    s_code = existing_student[1]
+                    c.execute("""
+                    UPDATE students
+                    SET doc_id = COALESCE(NULLIF(?, ''), doc_id),
+                        grade = COALESCE(NULLIF(?, ''), grade),
+                        section = COALESCE(NULLIF(?, ''), section),
+                        is_scholarship = ?,
+                        scholarship_pct = ?,
+                        scholarship_reason = ?,
+                        status = 'ACTIVE'
+                    WHERE id = ?;
+                    """, (s_doc_id or None, s_grade, s_section, is_sch, sch_pct, sch_reason, student_id))
+                    updated_students += 1
+                else:
+                    # Nuevo estudiante: Generamos código correlativo único y lo creamos
+                    student_id = f"s_{uuid.uuid4().hex[:8]}"
+                    s_code = generate_next_student_code(conn)
+                    c.execute("""
+                    INSERT INTO students (id, student_code, doc_id, first_name, last_name, grade, section, status, is_scholarship, scholarship_pct, scholarship_reason)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?);
+                    """, (student_id, s_code, s_doc_id or None, s_first_name, s_last_name, s_grade, s_section, is_sch, sch_pct, sch_reason))
+                    created_students += 1
+                
+                # 3. Asignar paquete de deudas del año escolar (la función verifica que no existan previamente)
                 assign_school_year_debts_to_student(c, student_id, s_grade, is_sch, sch_pct)
 
+                # 4. Vincular estudiante con su representante
                 if guardian_id:
                     c.execute("INSERT OR REPLACE INTO student_guardians (student_id, guardian_id, relationship, is_primary) VALUES (?, ?, 'Representante', 1);", (student_id, guardian_id))
                     
             conn.commit()
             conn.close()
+            
+            summary_msg = f"Carga masiva procesada con éxito: {created_students} nuevos estudiantes creados"
+            if updated_students > 0:
+                summary_msg += f", {updated_students} estudiantes existentes actualizados (sin duplicados)"
+            summary_msg += f". {created_guardians} nuevos representantes registrados."
+
             return self.send_json({
                 "success": True,
-                "message": f"Carga masiva completada con éxito: {created_students} estudiantes y {created_guardians} representantes creados. Se asignó automáticamente la Matrícula del año escolar y las mensualidades acumuladas (Septiembre y Octubre).",
+                "message": summary_msg,
                 "createdStudents": created_students,
+                "updatedStudents": updated_students,
                 "createdGuardians": created_guardians
             })
 
