@@ -743,7 +743,10 @@ def init_db():
         full_name TEXT NOT NULL,
         email TEXT,
         phone TEXT NOT NULL,
-        address TEXT
+        address TEXT,
+        guardian_code TEXT,
+        status TEXT DEFAULT 'ACTIVE',
+        rif TEXT
     );
     """)
 
@@ -969,6 +972,7 @@ def init_db():
     for stmt in [
         "ALTER TABLE guardians ADD COLUMN guardian_code TEXT;",
         "ALTER TABLE guardians ADD COLUMN status TEXT DEFAULT 'ACTIVE';",
+        "ALTER TABLE guardians ADD COLUMN rif TEXT;",
         "ALTER TABLE students ADD COLUMN status TEXT DEFAULT 'ACTIVE';",
         "ALTER TABLE students ADD COLUMN section TEXT DEFAULT 'A';",
         "ALTER TABLE payments ADD COLUMN paper_number TEXT;",
@@ -1064,9 +1068,9 @@ def seed_data(conn):
     cursor.execute("INSERT INTO user_roles VALUES ('u_cajera', 'r_cajera');")
 
     # 5. Representantes y Estudiantes
-    cursor.execute("INSERT INTO guardians VALUES ('g1', 'V-15420198', 'Carlos Alberto Mendoza', 'cmendoza@gmail.com', '+58 414-5550192', 'Res. El Parral, Apt 4B');")
-    cursor.execute("INSERT INTO guardians VALUES ('g2', 'V-18910455', 'Mariana Isabel Rivas', 'mrivas@hotmail.com', '+58 424-3338901', 'Urb. Los Mangos, Casa #12');")
-    cursor.execute("INSERT INTO guardians VALUES ('g3', 'V-12330981', 'José Luis Paredes', 'jlparedes@yahoo.es', '+58 412-9994411', 'Calle 5 de Julio #45');")
+    cursor.execute("INSERT INTO guardians (id, doc_id, full_name, email, phone, address) VALUES ('g1', 'V-15420198', 'Carlos Alberto Mendoza', 'cmendoza@gmail.com', '+58 414-5550192', 'Res. El Parral, Apt 4B');")
+    cursor.execute("INSERT INTO guardians (id, doc_id, full_name, email, phone, address) VALUES ('g2', 'V-18910455', 'Mariana Isabel Rivas', 'mrivas@hotmail.com', '+58 424-3338901', 'Urb. Los Mangos, Casa #12');")
+    cursor.execute("INSERT INTO guardians (id, doc_id, full_name, email, phone, address) VALUES ('g3', 'V-12330981', 'José Luis Paredes', 'jlparedes@yahoo.es', '+58 412-9994411', 'Calle 5 de Julio #45');")
 
     cursor.execute("INSERT INTO students VALUES ('s1', 'EST-2026-001', 'V-32400111', 'Sofía Valentina', 'Mendoza Rivas', '5to Grado A', 'ACTIVE');")
     cursor.execute("INSERT INTO students VALUES ('s2', 'EST-2026-002', 'V-31998222', 'Mateo Alejandro', 'Mendoza Rivas', '1er Año B', 'ACTIVE');")
@@ -1274,7 +1278,8 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             c = conn.cursor()
             c.execute("""
             SELECT DISTINCT s.id, s.student_code, s.doc_id, s.first_name, s.last_name, s.grade, COALESCE(s.section, ''),
-                   g.full_name, g.doc_id, g.phone, COALESCE(g.guardian_code, 'N/A'), COALESCE(g.first_name, ''), COALESCE(g.last_name, '')
+                   g.full_name, g.doc_id, g.phone, COALESCE(g.guardian_code, 'N/A'), COALESCE(g.first_name, ''), COALESCE(g.last_name, ''),
+                   COALESCE(g.rif, ''), g.id
             FROM students s
             LEFT JOIN student_guardians sg ON s.id = sg.student_id
             LEFT JOIN guardians g ON sg.guardian_id = g.id
@@ -1298,7 +1303,16 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                     "lastName": r[4],
                     "grade": r[5],
                     "section": r[6],
-                    "guardians": [{"guardian": {"fullName": r[7], "docId": r[8], "phone": r[9], "guardianCode": r[10], "firstName": r[11], "lastName": r[12]}}],
+                    "guardians": [{"guardian": {
+                        "id": r[14],
+                        "fullName": r[7],
+                        "docId": r[8],
+                        "phone": r[9],
+                        "guardianCode": r[10],
+                        "firstName": r[11],
+                        "lastName": r[12],
+                        "rif": r[13]
+                    }}],
                     "debts": [1] * pending_count
                 })
             conn.close()
@@ -1344,7 +1358,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
 
             # Find primary guardian for this student
             c.execute("""
-            SELECT g.id, g.full_name, g.doc_id, COALESCE(g.guardian_code, 'N/A'), COALESCE(g.phone, ''), COALESCE(g.email, '')
+            SELECT g.id, g.full_name, g.doc_id, COALESCE(g.guardian_code, 'N/A'), COALESCE(g.phone, ''), COALESCE(g.email, ''), COALESCE(g.rif, '')
             FROM student_guardians sg
             JOIN guardians g ON sg.guardian_id = g.id
             WHERE sg.student_id = ?
@@ -1359,7 +1373,8 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                     "docId": g_row[2],
                     "guardianCode": g_row[3],
                     "phone": g_row[4],
-                    "email": g_row[5] or "representante@gmail.com"
+                    "email": g_row[5] or "representante@gmail.com",
+                    "rif": g_row[6] or ""
                 }
                 # Find all represented students under this guardian
                 c.execute("""
@@ -1612,7 +1627,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
 
             # Items
             c.execute("""
-            SELECT pd.id, pd.amount_paid_usd, fc.name, s.first_name, s.last_name, s.grade, s.student_code, g.full_name, g.doc_id, g.phone, g.email
+            SELECT pd.id, pd.amount_paid_usd, fc.name, s.first_name, s.last_name, s.grade, s.student_code, g.full_name, g.doc_id, g.phone, g.email, COALESCE(g.rif, '')
             FROM payment_details pd
             JOIN student_debts d ON pd.debt_id = d.id
             JOIN fee_concepts fc ON d.fee_concept_id = fc.id
@@ -1631,7 +1646,13 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                         "feeConcept": {"name": ir[2]},
                         "student": {
                             "firstName": ir[3], "lastName": ir[4], "grade": ir[5], "studentCode": ir[6],
-                            "guardians": [{"guardian": {"fullName": ir[7], "docId": ir[8], "phone": ir[9], "email": ir[10] or "representante@gmail.com"}}]
+                            "guardians": [{"guardian": {
+                                "fullName": ir[7],
+                                "docId": ir[8],
+                                "phone": ir[9],
+                                "email": ir[10] or "representante@gmail.com",
+                                "rif": ir[11] or ""
+                            }}]
                         }
                     }
                 })
@@ -2563,7 +2584,8 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             sql = """
             SELECT s.id, s.student_code, COALESCE(s.doc_id, ''), s.first_name, s.last_name, s.grade, COALESCE(s.section, 'A'), COALESCE(s.status, 'ACTIVE'),
                    g.id, COALESCE(g.guardian_code, 'N/A'), COALESCE(g.doc_id, ''), COALESCE(g.full_name, ''), COALESCE(g.phone, ''), COALESCE(g.email, ''), COALESCE(g.status, 'ACTIVE'),
-                   COALESCE(s.is_scholarship, 0), COALESCE(s.scholarship_pct, 0), COALESCE(s.scholarship_reason, '')
+                   COALESCE(s.is_scholarship, 0), COALESCE(s.scholarship_pct, 0), COALESCE(s.scholarship_reason, ''),
+                   COALESCE(g.rif, '')
             FROM students s
             LEFT JOIN student_guardians sg ON s.id = sg.student_id
             LEFT JOIN guardians g ON sg.guardian_id = g.id
@@ -2604,7 +2626,8 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                         "fullName": r[11],
                         "phone": r[12],
                         "email": r[13],
-                        "status": r[14]
+                        "status": r[14],
+                        "rif": r[18]
                     } if r[8] else None
                 })
             conn.close()
@@ -2617,9 +2640,9 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 return self.send_json({"error": "No autorizado"}, 401)
             conn = sqlite3.connect(DB_FILE)
             c = conn.cursor()
-            c.execute("SELECT id, full_name, doc_id, COALESCE(guardian_code, 'N/A'), COALESCE(phone, '') FROM guardians ORDER BY full_name ASC;")
+            c.execute("SELECT id, full_name, doc_id, COALESCE(guardian_code, 'N/A'), COALESCE(phone, ''), COALESCE(rif, '') FROM guardians ORDER BY full_name ASC;")
             rows = c.fetchall()
-            guardians = [{"id": r[0], "fullName": r[1], "docId": r[2], "guardianCode": r[3], "phone": r[4]} for r in rows]
+            guardians = [{"id": r[0], "fullName": r[1], "docId": r[2], "guardianCode": r[3], "phone": r[4], "rif": r[5]} for r in rows]
             conn.close()
             return self.send_json({"guardians": guardians})
 
@@ -3868,21 +3891,22 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             if not guardian_id and guardian_data:
                 g_doc_id = guardian_data.get("docId", "").strip()
                 g_name = guardian_data.get("fullName", "").strip()
+                g_rif = guardian_data.get("rif", "").strip()
                 if g_doc_id:
                     c.execute("SELECT id FROM guardians WHERE doc_id = ?", (g_doc_id,))
                     existing_g = c.fetchone()
                     if existing_g:
                         guardian_id = existing_g[0]
                         c.execute("""
-                        UPDATE guardians SET full_name = ?, phone = ?, email = ?, address = ? WHERE id = ?
-                        """, (g_name, guardian_data.get("phone", "").strip(), guardian_data.get("email", "").strip(), guardian_data.get("address", "").strip(), guardian_id))
+                        UPDATE guardians SET full_name = ?, phone = ?, email = ?, address = ?, rif = COALESCE(NULLIF(?, ''), rif) WHERE id = ?
+                        """, (g_name, guardian_data.get("phone", "").strip(), guardian_data.get("email", "").strip(), guardian_data.get("address", "").strip(), g_rif, guardian_id))
                     else:
                         guardian_id = f"g_{uuid.uuid4().hex[:8]}"
                         g_code = generate_next_guardian_code(conn)
                         c.execute("""
-                        INSERT INTO guardians (id, doc_id, full_name, email, phone, address, guardian_code, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE');
-                        """, (guardian_id, g_doc_id, g_name, guardian_data.get("email", "").strip(), guardian_data.get("phone", "").strip(), guardian_data.get("address", "").strip(), g_code))
+                        INSERT INTO guardians (id, doc_id, full_name, email, phone, address, guardian_code, status, rif)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?);
+                        """, (guardian_id, g_doc_id, g_name, guardian_data.get("email", "").strip(), guardian_data.get("phone", "").strip(), guardian_data.get("address", "").strip(), g_code, g_rif or None))
             
             if student_id:
                 # Update
@@ -4115,6 +4139,41 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "createdStudents": created_students,
                 "updatedStudents": updated_students,
                 "createdGuardians": created_guardians
+            })
+
+        # Update Guardian RIF
+        if path == "/api/guardians/update-rif":
+            user = self.get_auth_user()
+            if not user:
+                return self.send_json({"error": "No autorizado"}, 401)
+
+            guardian_id = body.get("guardianId")
+            rif_val = (body.get("rif") or "").strip().upper()
+
+            if not guardian_id or not rif_val:
+                return self.send_json({"error": "ID del representante y RIF son requeridos"}, 400)
+
+            clean_digits = re.sub(r'\D', '', rif_val)
+            letter_match = re.match(r'^[VE]', rif_val)
+            letter = letter_match.group(0) if letter_match else ('E' if 'E' in rif_val else 'V')
+
+            if len(clean_digits) != 9:
+                return self.send_json({
+                    "error": f"El RIF debe tener exactamente 9 dígitos numéricos (más la letra {letter}). Se recibieron {len(clean_digits)} dígitos."
+                }, 400)
+
+            formatted_rif = f"{letter}-{clean_digits[:8]}-{clean_digits[8]}"
+
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("UPDATE guardians SET rif = ? WHERE id = ?;", (formatted_rif, guardian_id))
+            conn.commit()
+            conn.close()
+
+            return self.send_json({
+                "success": True,
+                "rif": formatted_rif,
+                "message": "RIF del representante guardado exitosamente."
             })
 
         return self.send_json({"error": "Endpoint POST no encontrado"}, 404)

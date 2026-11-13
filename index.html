@@ -194,6 +194,9 @@
       voidReason: '',
       showClosingModal: false,
       closingData: null,
+      showRifCaptureModal: false,
+      rifModalGuardian: null,
+      rifModalAmountUSD: 0,
       showPaymentConfirmModal: false,
       paymentCurrency: 'USD',
       paymentMethod: 'CASH_USD',
@@ -417,6 +420,7 @@
           ${state.activeReceiptModalId ? renderReceiptModalHTML() : ''}
           ${state.showVoidModal ? renderVoidModalHTML() : ''}
           ${state.showClosingModal ? renderClosingModalHTML() : ''}
+          ${state.showRifCaptureModal ? renderRifCaptureModalHTML() : ''}
           ${state.showPaymentConfirmModal ? renderPaymentConfirmModalHTML() : ''}
           ${state.showStudentModal ? renderStudentModalHTML() : ''}
           ${state.showBatchModal ? renderBatchModalHTML() : ''}
@@ -1334,6 +1338,100 @@
       if (displayAbonoVES) displayAbonoVES.innerText = `${valVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES`;
     }
 
+    function extractRifBaseFromDocId(docId) {
+      if (!docId) return { letter: 'V', digits: '00000000', prefix: 'V-00000000-' };
+      const str = String(docId).trim().toUpperCase();
+      const isExtranjero = str.startsWith('E') || str.includes('EXTRANJERO');
+      const letter = isExtranjero ? 'E' : 'V';
+      const numbersOnly = str.replace(/\D/g, '');
+      const padded8 = numbersOnly.padStart(8, '0').slice(-8);
+      return {
+        letter: letter,
+        digits: padded8,
+        prefix: `${letter}-${padded8}-`
+      };
+    }
+
+    function onRifDigitInputChanged(val, prefix) {
+      const clean = val.replace(/\D/g, '').slice(0, 1);
+      const input = document.getElementById('rif_single_digit_input');
+      if (input && input.value !== clean) input.value = clean;
+      const preview = document.getElementById('rif_preview_label');
+      if (preview) {
+        preview.innerText = clean ? `RIF Completo: ${prefix}${clean}` : `RIF Completo: ${prefix}_`;
+      }
+      const errorDiv = document.getElementById('rif_error_msg');
+      if (errorDiv) errorDiv.style.display = 'none';
+    }
+
+    async function saveRifAndProceedWithPayment(guardianId, prefix) {
+      const digitInput = document.getElementById('rif_single_digit_input');
+      const errorDiv = document.getElementById('rif_error_msg');
+      const digit = (digitInput?.value || '').trim();
+
+      if (!digit || !/^\d$/.test(digit)) {
+        if (errorDiv) {
+          errorDiv.innerText = 'Debe ingresar el dígito numérico (0 al 9) faltante del RIF.';
+          errorDiv.style.display = 'block';
+        } else {
+          alert('Debe ingresar el dígito numérico (0 al 9) faltante del RIF.');
+        }
+        digitInput?.focus();
+        return;
+      }
+
+      const fullRif = `${prefix}${digit}`;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/guardians/update-rif`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+          body: JSON.stringify({ guardianId, rif: fullRif })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          if (state.familyData?.guardian) {
+            state.familyData.guardian.rif = data.rif;
+          }
+          if (state.selectedStudent?.guardians?.[0]?.guardian) {
+            state.selectedStudent.guardians[0].guardian.rif = data.rif;
+          }
+          if (state.familyData?.students) {
+            state.familyData.students.forEach(st => {
+              if (st.guardians && st.guardians[0]?.guardian) {
+                st.guardians[0].guardian.rif = data.rif;
+              }
+            });
+          }
+          if (state.searchResults) {
+            state.searchResults.forEach(st => {
+              if (st.guardians && st.guardians[0]?.guardian && st.guardians[0].guardian.id === guardianId) {
+                st.guardians[0].guardian.rif = data.rif;
+              }
+            });
+          }
+
+          state.showRifCaptureModal = false;
+          openPaymentConfirmModal();
+        } else {
+          if (errorDiv) {
+            errorDiv.innerText = data.error || 'Error al guardar el RIF.';
+            errorDiv.style.display = 'block';
+          } else {
+            alert(data.error || 'Error al guardar el RIF.');
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        if (errorDiv) {
+          errorDiv.innerText = 'Error de conexión con el servidor.';
+          errorDiv.style.display = 'block';
+        } else {
+          alert('Error de conexión con el servidor.');
+        }
+      }
+    }
+
     function openPaymentConfirmModal() {
       const totalUSD = state.debts.filter(d => state.selectedDebtIds.includes(d.id)).reduce((s, d) => s + d.amountUSD, 0);
       const amountToProcess = state.isPartial ? (state.partialAmountUSD || 0) : totalUSD;
@@ -1344,6 +1442,16 @@
       }
       if (state.isPartial && amountToProcess > totalUSD) {
         alert(`El monto a abonar ($${amountToProcess.toFixed(2)}) no puede ser mayor que la deuda total ($${totalUSD.toFixed(2)}).`);
+        return;
+      }
+
+      // Validación obligatoria de RIF del Representante para emisión de Factura
+      const guardian = state.familyData?.guardian || state.selectedStudent?.guardians?.[0]?.guardian;
+      if (guardian && (!guardian.rif || String(guardian.rif).trim() === '')) {
+        state.showRifCaptureModal = true;
+        state.rifModalGuardian = guardian;
+        state.rifModalAmountUSD = amountToProcess;
+        render();
         return;
       }
 
@@ -1480,6 +1588,113 @@
         state.paymentModalError = 'Error de comunicación con el servidor.';
         render();
       }
+    }
+
+    function renderRifCaptureModalHTML() {
+      if (!state.showRifCaptureModal) return '';
+      const guardian = state.rifModalGuardian || state.familyData?.guardian || state.selectedStudent?.guardians?.[0]?.guardian;
+      if (!guardian) return '';
+
+      const rifBase = extractRifBaseFromDocId(guardian.docId);
+      const selectedDebtsObjs = state.debts.filter(d => state.selectedDebtIds.includes(d.id));
+      const conceptsList = selectedDebtsObjs.map(d => d.feeConcept?.name || d.name || 'Cuota Escolar').join(', ');
+      
+      const studentNames = state.selectedStudent 
+        ? `${state.selectedStudent.firstName} ${state.selectedStudent.lastName} (${state.selectedStudent.grade})`
+        : ((state.familyData?.students || []).map(s => `${s.firstName} ${s.lastName} (${s.grade})`).join(', ') || 'Estudiante asignado');
+
+      const amountUSD = state.rifModalAmountUSD || (state.isPartial ? (state.partialAmountUSD || 0) : selectedDebtsObjs.reduce((s, d) => s + d.amountUSD, 0));
+      const amountVES = amountUSD * state.exchangeRate;
+
+      return `
+        <div class="modal-overlay" onclick="state.showRifCaptureModal=false; render();">
+          <div class="modal-content" style="max-width:560px; border:1px solid rgba(99,102,241,0.4); box-shadow:0 25px 60px rgba(0,0,0,0.7);" onclick="event.stopPropagation();">
+            
+            <!-- Header Modal -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+              <div style="display:flex; align-items:center; gap:0.6rem;">
+                <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #6366f1, #4f46e5); display:flex; align-items:center; justify-content:center; color:#ffffff; font-size:1.2rem;">
+                  <i data-lucide="receipt"></i>
+                </div>
+                <div>
+                  <h3 style="font-size:1.15rem; font-weight:800; color:#f3f4f6; margin:0;">Registro de RIF Obligatorio</h3>
+                  <span style="font-size:0.75rem; color:#818cf8; font-weight:600;">Requisito para emisión de Factura Legal CDNJ</span>
+                </div>
+              </div>
+              <button onclick="state.showRifCaptureModal=false; render();" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.6rem;">✕</button>
+            </div>
+
+            <!-- Datos de la Factura -->
+            <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1rem; margin-bottom:1.25rem;">
+              <div style="font-size:0.75rem; font-weight:700; color:#9ca3af; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.35rem;">
+                <i data-lucide="file-text"></i> Datos de la Factura en Proceso
+              </div>
+              
+              <div style="display:grid; grid-template-columns: 1fr; gap:0.5rem; font-size:0.85rem;">
+                <div>
+                  <span style="color:#94a3b8;">Estudiante(s):</span>
+                  <strong style="color:#f1f5f9; margin-left:0.35rem;">${studentNames}</strong>
+                </div>
+                <div>
+                  <span style="color:#94a3b8;">Representante:</span>
+                  <strong style="color:#f1f5f9; margin-left:0.35rem;">${guardian.fullName}</strong>
+                  <span style="color:#64748b; font-size:0.8rem; margin-left:0.35rem;">(C.I: ${guardian.docId})</span>
+                </div>
+                <div>
+                  <span style="color:#94a3b8;">Descripción:</span>
+                  <span style="color:#cbd5e1; margin-left:0.35rem;">${conceptsList || 'Cobro de Aranceles Escolares'}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.35rem; padding-top:0.5rem; border-top:1px dashed rgba(255,255,255,0.1);">
+                  <span style="color:#94a3b8; font-weight:600;">Monto a Facturar:</span>
+                  <div>
+                    <span style="color:#34d399; font-weight:800; font-size:1.05rem;">$${amountUSD.toFixed(2)} USD</span>
+                    <span style="color:#94a3b8; font-size:0.8rem; margin-left:0.4rem;">(${amountVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Caja Interactiva de RIF -->
+            <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); border-radius:12px; padding:1.25rem; text-align:center; margin-bottom:1.25rem;">
+              <p style="font-size:0.82rem; color:#cbd5e1; margin-bottom:1rem; line-height:1.4;">
+                La factura se emitirá y registrará <strong>únicamente por el RIF</strong>. Los primeros 8 dígitos y la letra han sido extraídos automáticamente de la cédula del representante. Ingrese solo el <strong>dígito numérico adicional</strong> que le falta:
+              </p>
+
+              <div style="display:flex; justify-content:center; align-items:center; gap:0.6rem; margin-bottom:0.75rem;">
+                <!-- Prefijo de 8 dígitos extraído de cédula -->
+                <div style="background:#0f172a; border:2px solid #334155; border-radius:10px; padding:0.65rem 1.1rem; font-family:'Courier New', monospace; font-size:1.6rem; font-weight:800; color:#38bdf8; letter-spacing:2px; user-select:none; box-shadow:inset 0 2px 4px rgba(0,0,0,0.5);" title="Extraído de la Cédula (Lectura únicamente)">
+                  ${rifBase.prefix}
+                </div>
+
+                <!-- Input del único dígito faltante -->
+                <input type="text" id="rif_single_digit_input" maxlength="1" pattern="[0-9]"
+                  style="width:65px; height:58px; text-align:center; font-family:'Courier New', monospace; font-size:1.8rem; font-weight:900; background:#0f172a; border:2px solid #818cf8; border-radius:10px; color:#ffffff; outline:none; box-shadow:0 0 15px rgba(99,102,241,0.4);"
+                  placeholder="#" autofocus
+                  oninput="onRifDigitInputChanged(this.value, '${rifBase.prefix}')"
+                  onkeydown="if(event.key==='Enter') saveRifAndProceedWithPayment('${guardian.id}', '${rifBase.prefix}')"
+                />
+              </div>
+
+              <div id="rif_preview_label" style="font-family:'Courier New', monospace; font-size:1rem; font-weight:800; color:#a5b4fc; margin-bottom:0.25rem;">
+                RIF Completo: ${rifBase.prefix}_
+              </div>
+
+              <div id="rif_error_msg" style="color:#f87171; font-size:0.8rem; font-weight:600; display:none; margin-top:0.4rem;"></div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+              <button onclick="state.showRifCaptureModal=false; render();" class="btn btn-secondary" style="padding:0.65rem 1.25rem;">
+                Cancelar
+              </button>
+              <button onclick="saveRifAndProceedWithPayment('${guardian.id}', '${rifBase.prefix}')" class="btn btn-primary" style="padding:0.65rem 1.5rem; background:linear-gradient(135deg, #6366f1, #4f46e5); font-weight:700;">
+                <i data-lucide="check"></i> Guardar RIF y Continuar al Pago
+              </button>
+            </div>
+
+          </div>
+        </div>
+      `;
     }
 
     function renderPaymentConfirmModalHTML() {
@@ -2146,7 +2361,7 @@
                 </div>
                 <div>
                   <strong>Representante:</strong> ${guardian?.fullName || 'N/A'}<br>
-                  <strong>Cédula / DNI:</strong> ${guardian?.docId || 'N/A'}<br>
+                  <strong>RIF:</strong> <span style="font-family:'Courier New', monospace; font-weight:800; font-size:0.9rem; color:#111827;">${guardian?.rif || 'N/A'}</span><br>
                   <strong>Correo Registrado:</strong> <span style="color:#2563eb; font-weight:700;">${guardian?.email || 'representante@gmail.com'}</span>
                 </div>
               </div>
@@ -5082,6 +5297,7 @@
       const repName = document.getElementById('rep_name')?.value?.trim();
       const repPhone = document.getElementById('rep_phone')?.value?.trim();
       const repEmail = document.getElementById('rep_email')?.value?.trim();
+      const repRif = document.getElementById('rep_rif')?.value?.trim();
 
       if (!firstName || !grade) {
         alert("Por favor ingrese el nombre del estudiante y seleccione su grado.");
@@ -5116,7 +5332,8 @@
           docId: repDocId,
           fullName: repName,
           phone: repPhone,
-          email: repEmail
+          email: repEmail,
+          rif: repRif
         };
       }
 
@@ -5434,10 +5651,14 @@
                   <input type="text" id="rep_name" class="input-field" value="${s && s.guardian ? s.guardian.fullName : ''}" placeholder="Ej. Juan Pérez">
                 </div>
                 <div>
+                  <label class="input-label">RIF Representante (Opcional)</label>
+                  <input type="text" id="rep_rif" class="input-field" value="${s && s.guardian ? s.guardian.rif || '' : ''}" placeholder="Ej. V-14266349-1">
+                </div>
+                <div>
                   <label class="input-label">Teléfono de Contacto</label>
                   <input type="text" id="rep_phone" class="input-field" value="${s && s.guardian ? s.guardian.phone : ''}" placeholder="Ej. +58 412 1234567">
                 </div>
-                <div>
+                <div style="grid-column: span 2;">
                   <label class="input-label">Correo Electrónico</label>
                   <input type="email" id="rep_email" class="input-field" value="${s && s.guardian ? s.guardian.email : ''}" placeholder="Ej. representante@gmail.com">
                 </div>
