@@ -1664,7 +1664,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             can_print_invoice = True
             for mr in method_rows:
                 r_status = mr[6]
-                if mr[1] in ['PAGO_MOVIL', 'TRANSFER_VES'] and r_status not in ['CONCILIADO', 'CONCILIADO_MAYOR']:
+                if mr[1] == 'TRANSFER_VES' and r_status not in ['CONCILIADO', 'CONCILIADO_MAYOR']:
                     can_print_invoice = False
                 methods.append({
                     "id": mr[0], "method": mr[1], "amount": mr[2], "currency": mr[3],
@@ -2358,7 +2358,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 can_print = True
                 for mr in m_rows:
                     st = mr[6]
-                    if mr[1] in ['PAGO_MOVIL', 'TRANSFER_VES'] and st not in ['CONCILIADO', 'CONCILIADO_MAYOR']:
+                    if mr[1] == 'TRANSFER_VES' and st not in ['CONCILIADO', 'CONCILIADO_MAYOR']:
                         can_print = False
 
                     stat_counts[st] = stat_counts.get(st, 0) + 1
@@ -2896,7 +2896,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                         m_ref = m.get("reference") if isinstance(m, dict) else None
                         m_bank = m.get("bank") if isinstance(m, dict) else None
 
-                        r_status = "PENDIENTE" if m_type in ["PAGO_MOVIL", "TRANSFER_VES"] else "AUTO"
+                        r_status = "PENDIENTE" if m_type == "TRANSFER_VES" else "AUTO"
                         c.execute("""
                         INSERT INTO payment_methods (id, payment_id, method, amount, currency, reference, bank, reconciliation_status)
                         VALUES (?,?,?,?,?,?,?,?);

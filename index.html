@@ -198,6 +198,7 @@
       rifModalGuardian: null,
       rifModalAmountUSD: 0,
       showPaymentConfirmModal: false,
+      splitPayments: [],
       paymentCurrency: 'USD',
       paymentMethod: 'CASH_USD',
       paymentReference: '',
@@ -1459,34 +1460,170 @@
         return;
       }
 
+      // Inicializar lista de métodos de pago combinados
+      state.splitPayments = [
+        {
+          id: `sp_${Date.now()}_0`,
+          method: 'CASH_USD',
+          currency: 'USD',
+          amount: Number(amountToProcess.toFixed(2)),
+          bank: '',
+          reference: ''
+        }
+      ];
+
       state.showPaymentConfirmModal = true;
-      state.paymentCurrency = 'USD';
-      state.paymentMethod = 'CASH_USD';
-      state.paymentReference = '';
-      state.paymentBank = '';
       state.paymentModalError = null;
       render();
     }
 
-    function setPaymentCurrency(curr) {
-      state.paymentCurrency = curr;
+    function getMethodLabel(method) {
+      if (method === 'CASH_USD') return '💵 Efectivo USD ($)';
+      if (method === 'CASH_VES') return '🇻🇪 Efectivo Bolívares (VES)';
+      if (method === 'PUNTO_VENTA') return '💳 Punto de Venta / Tarjeta';
+      if (method === 'TRANSFER_VES') return '🏦 Transferencia Bancaria';
+      return method;
+    }
+
+    function addSplitPaymentRow() {
+      const totalUSD = state.debts.filter(d => state.selectedDebtIds.includes(d.id)).reduce((s, d) => s + d.amountUSD, 0);
+      const amountUSDToPay = state.isPartial ? (state.partialAmountUSD || 0) : totalUSD;
+
+      let totalAssignedUSD = 0;
+      (state.splitPayments || []).forEach(sp => {
+        const amt = Number(sp.amount) || 0;
+        totalAssignedUSD += sp.currency === 'USD' ? amt : (amt / state.exchangeRate);
+      });
+
+      const remainingUSD = Math.max(0, Number((amountUSDToPay - totalAssignedUSD).toFixed(2)));
+      const remainingVES = Number((remainingUSD * state.exchangeRate).toFixed(2));
+
+      const lastRow = state.splitPayments && state.splitPayments.length > 0 ? state.splitPayments[state.splitPayments.length - 1] : null;
+      const nextMethod = lastRow && (lastRow.method === 'PUNTO_VENTA' || lastRow.method === 'CASH_VES' || lastRow.method === 'TRANSFER_VES') ? 'PUNTO_VENTA' : 'CASH_USD';
+      const isVES = (nextMethod !== 'CASH_USD');
+
+      state.splitPayments.push({
+        id: `sp_${Date.now()}_${state.splitPayments.length}`,
+        method: nextMethod,
+        currency: isVES ? 'VES' : 'USD',
+        amount: isVES ? remainingVES : remainingUSD,
+        bank: lastRow?.bank || 'BANESCO',
+        reference: ''
+      });
       state.paymentModalError = null;
-      if (curr === 'USD') {
-        state.paymentMethod = 'CASH_USD';
-        state.paymentReference = '';
-        state.paymentBank = '';
-      } else {
-        state.paymentMethod = 'CASH_VES';
-        state.paymentReference = '';
-        state.paymentBank = '';
+      render();
+    }
+
+    function removeSplitPaymentRow(index) {
+      if (state.splitPayments.length <= 1) return;
+      state.splitPayments.splice(index, 1);
+      state.paymentModalError = null;
+      render();
+    }
+
+    function updateSplitPaymentRow(index, field, value) {
+      const row = state.splitPayments[index];
+      if (!row) return;
+
+      if (field === 'method') {
+        row.method = value;
+        if (value === 'CASH_USD') {
+          if (row.currency === 'VES') {
+            row.amount = Number((row.amount / state.exchangeRate).toFixed(2));
+          }
+          row.currency = 'USD';
+          row.bank = '';
+          row.reference = '';
+        } else {
+          if (row.currency === 'USD') {
+            row.amount = Number((row.amount * state.exchangeRate).toFixed(2));
+          }
+          row.currency = 'VES';
+          if (!row.bank) row.bank = 'BANESCO';
+        }
+        render();
+        return;
       }
-      render();
+
+      if (field === 'bank') {
+        row.bank = value;
+      } else if (field === 'reference') {
+        row.reference = String(value).trim();
+      } else if (field === 'amount') {
+        row.amount = parseFloat(value) || 0;
+      }
+      state.paymentModalError = null;
+      updatePaymentSummaryDOM();
     }
 
-    function setPaymentMethod(method) {
-      state.paymentMethod = method;
+    function onSplitAmountInput(index, val) {
+      const row = state.splitPayments[index];
+      if (row) {
+        row.amount = parseFloat(val) || 0;
+      }
       state.paymentModalError = null;
-      render();
+      updatePaymentSummaryDOM();
+    }
+
+    function updatePaymentSummaryDOM() {
+      const totalUSD = state.debts.filter(d => state.selectedDebtIds.includes(d.id)).reduce((s, d) => s + d.amountUSD, 0);
+      const amountUSDToPay = state.isPartial ? (state.partialAmountUSD || 0) : totalUSD;
+      const amountVESToPay = amountUSDToPay * state.exchangeRate;
+
+      let totalAssignedUSD = 0;
+      let totalAssignedVES = 0;
+
+      (state.splitPayments || []).forEach(sp => {
+        const amt = Number(sp.amount) || 0;
+        if (sp.currency === 'USD') {
+          totalAssignedUSD += amt;
+          totalAssignedVES += amt * state.exchangeRate;
+        } else {
+          totalAssignedVES += amt;
+          totalAssignedUSD += amt / state.exchangeRate;
+        }
+      });
+
+      const diffUSD = amountUSDToPay - totalAssignedUSD;
+      const diffVES = amountVESToPay - totalAssignedVES;
+      const isCovered = Math.abs(diffUSD) <= 0.05 || totalAssignedUSD >= (amountUSDToPay - 0.02);
+
+      const displayAssigned = document.getElementById('split_total_assigned');
+      const displayRemaining = document.getElementById('split_total_remaining');
+      const submitBtn = document.getElementById('btn_submit_split_payment');
+
+      if (displayAssigned) {
+        displayAssigned.innerHTML = `<span style="color:#34d399; font-weight:800; font-size:1.1rem;">$${totalAssignedUSD.toFixed(2)} USD</span> <span style="color:#94a3b8; font-size:0.8rem; margin-left:0.35rem;">(${totalAssignedVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES)</span>`;
+      }
+
+      if (displayRemaining) {
+        if (Math.abs(diffUSD) <= 0.05) {
+          displayRemaining.innerHTML = `<span style="color:#10b981; font-weight:800; font-size:0.95rem;">✓ Cubierto 100%</span>`;
+        } else if (diffUSD > 0.05) {
+          displayRemaining.innerHTML = `<span style="color:#f59e0b; font-weight:800; font-size:0.95rem;">Faltan: $${diffUSD.toFixed(2)} USD</span> <span style="color:#94a3b8; font-size:0.75rem; margin-left:0.25rem;">(${diffVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES)</span>`;
+        } else {
+          const overUSD = Math.abs(diffUSD);
+          const overVES = Math.abs(diffVES);
+          displayRemaining.innerHTML = `<span style="color:#60a5fa; font-weight:800; font-size:0.95rem;">Vuelto / Excedente: $${overUSD.toFixed(2)} USD</span> <span style="color:#94a3b8; font-size:0.75rem; margin-left:0.25rem;">(${overVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES)</span>`;
+        }
+      }
+
+      if (submitBtn) {
+        if (isCovered && totalAssignedUSD > 0) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+          submitBtn.style.cursor = 'pointer';
+          submitBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          submitBtn.innerHTML = `<i data-lucide="check-circle-2"></i> Confirmar Pago ($${amountUSDToPay.toFixed(2)} USD)`;
+        } else {
+          submitBtn.disabled = true;
+          submitBtn.style.opacity = '0.5';
+          submitBtn.style.cursor = 'not-allowed';
+          submitBtn.style.background = '#4b5563';
+          submitBtn.innerHTML = `<i data-lucide="lock"></i> Incompleto (Faltan $${Math.max(0, diffUSD).toFixed(2)} USD)`;
+        }
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+      }
     }
 
     async function confirmAndProcessPayment() {
@@ -1499,47 +1636,65 @@
         return;
       }
 
-      const method = state.paymentMethod;
-      const curr = state.paymentCurrency;
-      const ref = (state.paymentReference || '').trim();
-      const bank = (state.paymentBank || '').trim();
+      if (!state.splitPayments || state.splitPayments.length === 0) {
+        state.paymentModalError = 'Debe agregar al menos un método de pago.';
+        render();
+        return;
+      }
 
-      if (curr === 'VES') {
-        if (method === 'PAGO_MOVIL' || method === 'TRANSFER_VES' || method === 'PUNTO_VENTA') {
-          if (!ref || ref.length !== 5 || !/^\d{5}$/.test(ref)) {
-            state.paymentModalError = 'Debe ingresar exactamente los últimos 5 dígitos del comprobante / referencia.';
+      let totalAssignedUSD = 0;
+      for (let i = 0; i < state.splitPayments.length; i++) {
+        const sp = state.splitPayments[i];
+        const amt = Number(sp.amount) || 0;
+        if (amt <= 0) {
+          state.paymentModalError = `El método #${i + 1} (${getMethodLabel(sp.method)}) debe tener un monto mayor a cero.`;
+          render();
+          return;
+        }
+
+        if (sp.method === 'PUNTO_VENTA') {
+          if (!sp.bank) {
+            state.paymentModalError = `Debe seleccionar el Banco / Terminal del Punto de Venta en el método #${i + 1}.`;
+            render();
+            return;
+          }
+          if (!sp.reference || sp.reference.trim() === '') {
+            state.paymentModalError = `Debe ingresar el número de referencia / voucher del Punto de Venta en el método #${i + 1}.`;
             render();
             return;
           }
         }
 
-        if (method === 'PAGO_MOVIL' || method === 'TRANSFER_VES') {
-          const validBanks = ['VENEZUELA', 'BANESCO', 'BANCA AMIGA', 'MERCANTIL', 'PROVINCIAL'];
-          if (!bank || !validBanks.includes(bank)) {
-            state.paymentModalError = 'Debe seleccionar el banco de destino (VENEZUELA, BANESCO, BANCA AMIGA, MERCANTIL, PROVINCIAL).';
+        if (sp.method === 'TRANSFER_VES') {
+          if (!sp.bank) {
+            state.paymentModalError = `Debe seleccionar el Banco de Destino de la Transferencia en el método #${i + 1}.`;
+            render();
+            return;
+          }
+          if (!sp.reference || sp.reference.trim() === '') {
+            state.paymentModalError = `Debe ingresar el número de referencia del comprobante de transferencia en el método #${i + 1}.`;
             render();
             return;
           }
         }
+
+        totalAssignedUSD += sp.currency === 'USD' ? amt : (amt / state.exchangeRate);
       }
 
-      let methodsObj = [];
-      if (curr === 'USD') {
-        methodsObj = [{
-          method: 'CASH_USD',
-          amount: amountUSD,
-          currency: 'USD'
-        }];
-      } else {
-        const amountVES = Number((amountUSD * state.exchangeRate).toFixed(2));
-        methodsObj = [{
-          method: method,
-          amount: amountVES,
-          currency: 'VES',
-          reference: ref || null,
-          bank: bank || null
-        }];
+      const diffUSD = amountUSD - totalAssignedUSD;
+      if (diffUSD > 0.05) {
+        state.paymentModalError = `El total asignado ($${totalAssignedUSD.toFixed(2)} USD) no cubre el total de la factura ($${amountUSD.toFixed(2)} USD). Faltan $${diffUSD.toFixed(2)} USD.`;
+        render();
+        return;
       }
+
+      const methodsObj = state.splitPayments.map(sp => ({
+        method: sp.method,
+        amount: Number(Number(sp.amount).toFixed(2)),
+        currency: sp.currency,
+        reference: (sp.method === 'PUNTO_VENTA' || sp.method === 'TRANSFER_VES') ? sp.reference : null,
+        bank: (sp.method === 'PUNTO_VENTA' || sp.method === 'TRANSFER_VES') ? sp.bank : null
+      }));
 
       const activeStudentId = state.selectedStudent ? state.selectedStudent.id : (state.familyData?.students[0]?.id || '');
 
@@ -1586,6 +1741,7 @@
           state.debts = [];
           state.isPartial = false;
           state.partialAmountUSD = 0;
+          state.splitPayments = [];
           loadPaperControlData();
           render();
         } else {
@@ -1711,7 +1867,7 @@
       const totalUSD = state.debts.filter(d => state.selectedDebtIds.includes(d.id)).reduce((s, d) => s + d.amountUSD, 0);
       const amountUSD = state.isPartial ? (state.partialAmountUSD || 0) : totalUSD;
       const amountVES = amountUSD * state.exchangeRate;
-      const banks = ['VENEZUELA', 'BANESCO', 'BANCA AMIGA', 'MERCANTIL', 'PROVINCIAL'];
+      const banks = ['BANESCO', 'VENEZUELA', 'MERCANTIL', 'PROVINCIAL', 'BANCA AMIGA', 'BNC', 'BANCARIBE', 'OTRO'];
 
       const selectedDebtsObjsModal = state.debts.filter(d => state.selectedDebtIds.includes(d.id));
       const isEnrollmentInModal = state.reEnrollmentEnabled && selectedDebtsObjsModal.some(d => {
@@ -1720,103 +1876,166 @@
         return c.includes('2027-2028') || c.includes('2028') || n.includes('2027-2028');
       });
 
+      // Calcular montos asignados actuales
+      let currentAssignedUSD = 0;
+      let currentAssignedVES = 0;
+      (state.splitPayments || []).forEach(sp => {
+        const amt = Number(sp.amount) || 0;
+        if (sp.currency === 'USD') {
+          currentAssignedUSD += amt;
+          currentAssignedVES += amt * state.exchangeRate;
+        } else {
+          currentAssignedVES += amt;
+          currentAssignedUSD += amt / state.exchangeRate;
+        }
+      });
+      const currentDiffUSD = amountUSD - currentAssignedUSD;
+      const currentDiffVES = amountVES - currentAssignedVES;
+      const isFullyCovered = Math.abs(currentDiffUSD) <= 0.05 || currentAssignedUSD >= (amountUSD - 0.02);
+
       return `
         <div class="modal-overlay" onclick="state.showPaymentConfirmModal=false; render();">
-          <div class="modal-content" style="max-width:580px; background:#111827; border:1px solid rgba(99,102,241,0.3); box-shadow:0 20px 40px rgba(0,0,0,0.6);" onclick="event.stopPropagation();">
+          <div class="modal-content" style="max-width:650px; background:#111827; border:1px solid rgba(99,102,241,0.3); box-shadow:0 25px 50px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;" onclick="event.stopPropagation();">
             
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.75rem; margin-bottom:1.25rem;">
               <h3 style="font-size:1.15rem; font-weight:800; color:#f3f4f6; display:flex; align-items:center; gap:0.5rem; margin:0;">
-                <i data-lucide="credit-card" color="#34d399"></i> Confirmación y Método de Pago
+                <i data-lucide="credit-card" color="#34d399"></i> Procesamiento y Facturación de Pago
               </h3>
               <button onclick="state.showPaymentConfirmModal=false; render();" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.6rem;">✕</button>
             </div>
 
-            <div style="background:rgba(17,24,39,0.7); border:1px solid rgba(255,255,255,0.08); padding:1rem; border-radius:10px; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center;">
+            <!-- Resumen Monto a Facturar -->
+            <div style="background:rgba(17,24,39,0.85); border:1px solid rgba(255,255,255,0.1); padding:1rem; border-radius:12px; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <span style="font-size:0.75rem; color:#9ca3af; text-transform:uppercase; font-weight:700;">Monto a Procesar:</span>
-                <div style="font-size:1.5rem; font-weight:800; color:${state.isPartial ? '#fbbf24' : '#34d399'};">$${amountUSD.toFixed(2)} USD</div>
+                <span style="font-size:0.75rem; color:#9ca3af; text-transform:uppercase; font-weight:700;">Total Factura a Pagar:</span>
+                <div style="font-size:1.5rem; font-weight:900; color:${state.isPartial ? '#fbbf24' : '#34d399'};">$${amountUSD.toFixed(2)} USD</div>
               </div>
               <div style="text-align:right;">
-                <span style="font-size:0.75rem; color:#9ca3af;">Tasa Ref: ${state.exchangeRate.toFixed(2)} VES</span>
+                <span style="font-size:0.75rem; color:#9ca3af;">Tasa Oficial CDNJ: <strong>${state.exchangeRate.toFixed(2)} VES/USD</strong></span>
                 <div style="font-size:1.15rem; font-weight:800; color:#f3f4f6;">${amountVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES</div>
               </div>
             </div>
 
-            <!-- Moneda -->
+            <!-- Lista de Métodos de Pago Combinados / Divididos -->
             <div style="margin-bottom:1.25rem;">
-              <label style="font-size:0.8rem; font-weight:700; color:#818cf8; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:0.5rem;">
-                1. Moneda de Pago:
-              </label>
-              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.75rem;">
-                <button type="button" onclick="setPaymentCurrency('USD')" class="glass-card" style="padding:0.85rem; text-align:center; border:2px solid ${state.paymentCurrency === 'USD' ? '#10b981' : 'rgba(255,255,255,0.1)'}; background:${state.paymentCurrency === 'USD' ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.02)'}; border-radius:10px; cursor:pointer; transition:all 0.2s ease;">
-                  <div style="font-size:1.1rem; font-weight:800; color:${state.paymentCurrency === 'USD' ? '#34d399' : '#e5e7eb'};">💵 USD ($)</div>
-                  <div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Dólares (Efectivo)</div>
-                </button>
-
-                <button type="button" onclick="setPaymentCurrency('VES')" class="glass-card" style="padding:0.85rem; text-align:center; border:2px solid ${state.paymentCurrency === 'VES' ? '#818cf8' : 'rgba(255,255,255,0.1)'}; background:${state.paymentCurrency === 'VES' ? 'rgba(99,102,241,0.18)' : 'rgba(255,255,255,0.02)'}; border-radius:10px; cursor:pointer; transition:all 0.2s ease;">
-                  <div style="font-size:1.1rem; font-weight:800; color:${state.paymentCurrency === 'VES' ? '#818cf8' : '#e5e7eb'};">🇻🇪 VES (Bs)</div>
-                  <div style="font-size:0.75rem; color:#9ca3af; margin-top:0.25rem;">Bolívares Digitales</div>
-                </button>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                <label style="font-size:0.8rem; font-weight:700; color:#818cf8; text-transform:uppercase; letter-spacing:0.05em; margin:0;">
+                  Métodos de Pago (Pago Único o Dividido / Múltiples Tarjetas):
+                </label>
+                <span style="font-size:0.75rem; color:#9ca3af;">${(state.splitPayments || []).length} método(s) añadido(s)</span>
               </div>
+
+              <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                ${(state.splitPayments || []).map((sp, idx) => {
+                  const isVES = sp.currency === 'VES';
+                  const equivText = isVES
+                    ? `≈ $${(sp.amount / state.exchangeRate).toFixed(2)} USD`
+                    : `≈ ${(sp.amount * state.exchangeRate).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES`;
+
+                  return `
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:0.85rem;">
+                      <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+                        
+                        <!-- Método -->
+                        <div style="flex:1; min-width:180px;">
+                          <label style="font-size:0.7rem; font-weight:700; color:#94a3b8; display:block; margin-bottom:0.25rem;">
+                            Método #${idx + 1}:
+                          </label>
+                          <select onchange="updateSplitPaymentRow(${idx}, 'method', this.value)" class="input-field" style="width:100%; font-size:0.85rem; font-weight:700;">
+                            <option value="CASH_USD" ${sp.method === 'CASH_USD' ? 'selected' : ''}>💵 Efectivo USD ($)</option>
+                            <option value="CASH_VES" ${sp.method === 'CASH_VES' ? 'selected' : ''}>🇻🇪 Efectivo Bolívares (VES)</option>
+                            <option value="PUNTO_VENTA" ${sp.method === 'PUNTO_VENTA' ? 'selected' : ''}>💳 Punto de Venta / Tarjeta</option>
+                            <option value="TRANSFER_VES" ${sp.method === 'TRANSFER_VES' ? 'selected' : ''}>🏦 Transferencia Bancaria</option>
+                          </select>
+                        </div>
+
+                        <!-- Monto -->
+                        <div style="width:150px;">
+                          <label style="font-size:0.7rem; font-weight:700; color:#94a3b8; display:block; margin-bottom:0.25rem;">
+                            Monto (${isVES ? 'Bs VES' : '$ USD'}):
+                          </label>
+                          <input type="number" step="0.01" min="0" value="${sp.amount}" 
+                            oninput="onSplitAmountInput(${idx}, this.value)" 
+                            class="input-field" 
+                            style="width:100%; font-weight:800; font-size:1rem; text-align:right;" 
+                            placeholder="0.00"
+                          />
+                          <div style="font-size:0.68rem; color:#64748b; text-align:right; margin-top:0.2rem;">
+                            ${equivText}
+                          </div>
+                        </div>
+
+                        <!-- Botón Eliminar si hay más de 1 -->
+                        ${state.splitPayments.length > 1 ? `
+                          <div style="padding-top:1.1rem;">
+                            <button type="button" onclick="removeSplitPaymentRow(${idx})" class="btn btn-secondary btn-sm" style="color:#f87171; border-color:rgba(239,68,68,0.3); padding:0.4rem 0.6rem;" title="Eliminar este método">
+                              ✕
+                            </button>
+                          </div>
+                        ` : ''}
+
+                      </div>
+
+                      <!-- Campos extras para Punto de Venta o Transferencia -->
+                      ${(sp.method === 'PUNTO_VENTA' || sp.method === 'TRANSFER_VES') ? `
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed rgba(255,255,255,0.08); background:rgba(0,0,0,0.2); padding:0.5rem; border-radius:6px;">
+                          <div>
+                            <label style="font-size:0.68rem; font-weight:700; color:${sp.method==='PUNTO_VENTA'?'#60a5fa':'#c084fc'}; text-transform:uppercase; display:block; margin-bottom:0.2rem;">
+                              ${sp.method === 'PUNTO_VENTA' ? '💳 Banco / Terminal Tarjeta:' : '🏦 Banco Destino:'}
+                            </label>
+                            <select onchange="updateSplitPaymentRow(${idx}, 'bank', this.value)" class="input-field" style="width:100%; font-size:0.8rem;">
+                              ${banks.map(b => `<option value="${b}" ${(sp.bank || 'BANESCO') === b ? 'selected' : ''}>${b}</option>`).join('')}
+                            </select>
+                          </div>
+                          <div>
+                            <label style="font-size:0.68rem; font-weight:700; color:${sp.method==='PUNTO_VENTA'?'#60a5fa':'#c084fc'}; text-transform:uppercase; display:block; margin-bottom:0.2rem;">
+                              ${sp.method === 'PUNTO_VENTA' ? 'N° Voucher / Ref. Terminal:' : 'N° Referencia Transferencia:'}
+                            </label>
+                            <input type="text" placeholder="Ej. 12345" value="${sp.reference || ''}"
+                              oninput="updateSplitPaymentRow(${idx}, 'reference', this.value)"
+                              class="input-field" style="width:100%; font-size:0.85rem; font-weight:700;"
+                            />
+                          </div>
+                        </div>
+                      ` : ''}
+
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- Botón Agregar Otro Método -->
+              <button type="button" onclick="addSplitPaymentRow()" class="btn btn-secondary btn-sm" style="width:100%; margin-top:0.6rem; border:1px dashed #6366f1; color:#a5b4fc; justify-content:center; padding:0.6rem; font-weight:700; background:rgba(99,102,241,0.08);">
+                <i data-lucide="plus-circle"></i> + Agregar Otro Método de Pago (Dividir Pago / Tarjeta Adicional)
+              </button>
             </div>
 
-            <!-- Forma de Pago -->
-            <div style="margin-bottom:1.25rem;">
-              <label style="font-size:0.8rem; font-weight:700; color:#818cf8; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:0.5rem;">
-                2. Forma de Pago:
-              </label>
-
-              ${state.paymentCurrency === 'USD' ? `
-                <div style="padding:0.85rem; background:rgba(16,185,129,0.1); border:1px dashed #10b981; border-radius:10px; color:#34d399; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
-                  <i data-lucide="check-circle-2"></i> Efectivo USD (Seleccionado automáticamente)
-                </div>
-              ` : `
-                <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:0.4rem;">
-                  <button type="button" onclick="setPaymentMethod('CASH_VES')" class="glass-card" style="padding:0.75rem 0.25rem; text-align:center; border:2px solid ${state.paymentMethod === 'CASH_VES' ? '#34d399' : 'rgba(255,255,255,0.1)'}; background:${state.paymentMethod === 'CASH_VES' ? 'rgba(16,185,129,0.18)' : 'rgba(255,255,255,0.02)'}; border-radius:8px; cursor:pointer;">
-                    <div style="font-size:0.8rem; font-weight:800; color:${state.paymentMethod === 'CASH_VES' ? '#34d399' : '#e5e7eb'};">💵 Efectivo</div>
-                  </button>
-
-                  <button type="button" onclick="setPaymentMethod('PAGO_MOVIL')" class="glass-card" style="padding:0.75rem 0.25rem; text-align:center; border:2px solid ${state.paymentMethod === 'PAGO_MOVIL' ? '#fbbf24' : 'rgba(255,255,255,0.1)'}; background:${state.paymentMethod === 'PAGO_MOVIL' ? 'rgba(251,191,36,0.18)' : 'rgba(255,255,255,0.02)'}; border-radius:8px; cursor:pointer;">
-                    <div style="font-size:0.8rem; font-weight:800; color:${state.paymentMethod === 'PAGO_MOVIL' ? '#fbbf24' : '#e5e7eb'};">📱 Pago Móvil</div>
-                  </button>
-
-                  <button type="button" onclick="setPaymentMethod('TRANSFER_VES')" class="glass-card" style="padding:0.75rem 0.25rem; text-align:center; border:2px solid ${state.paymentMethod === 'TRANSFER_VES' ? '#a855f7' : 'rgba(255,255,255,0.1)'}; background:${state.paymentMethod === 'TRANSFER_VES' ? 'rgba(168,85,247,0.18)' : 'rgba(255,255,255,0.02)'}; border-radius:8px; cursor:pointer;">
-                    <div style="font-size:0.8rem; font-weight:800; color:${state.paymentMethod === 'TRANSFER_VES' ? '#a855f7' : '#e5e7eb'};">🏦 Transferencia</div>
-                  </button>
-
-                  <button type="button" onclick="setPaymentMethod('PUNTO_VENTA')" class="glass-card" style="padding:0.75rem 0.25rem; text-align:center; border:2px solid ${state.paymentMethod === 'PUNTO_VENTA' ? '#60a5fa' : 'rgba(255,255,255,0.1)'}; background:${state.paymentMethod === 'PUNTO_VENTA' ? 'rgba(96,165,250,0.18)' : 'rgba(255,255,255,0.02)'}; border-radius:8px; cursor:pointer;">
-                    <div style="font-size:0.8rem; font-weight:800; color:${state.paymentMethod === 'PUNTO_VENTA' ? '#60a5fa' : '#e5e7eb'};">💳 Punto Venta</div>
-                  </button>
-                </div>
-              `}
-            </div>
-
-            <!-- Campos Adicionales -->
-            ${(state.paymentCurrency === 'VES' && (state.paymentMethod === 'PAGO_MOVIL' || state.paymentMethod === 'TRANSFER_VES' || state.paymentMethod === 'PUNTO_VENTA')) ? `
-              <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); padding:1rem; border-radius:10px; margin-bottom:1.25rem;">
-                
-                ${(state.paymentMethod === 'PAGO_MOVIL' || state.paymentMethod === 'TRANSFER_VES') ? `
-                  <div style="margin-bottom:0.85rem;">
-                    <label style="font-size:0.78rem; font-weight:700; color:#fbbf24; text-transform:uppercase; display:block; margin-bottom:0.35rem;">
-                      Banco de Destino (Requerido):
-                    </label>
-                    <select id="confirm_payment_bank" class="input-field" style="width:100%; font-size:0.9rem;" onchange="state.paymentBank=this.value; state.paymentModalError=null;">
-                      <option value="">-- Seleccione Banco --</option>
-                      ${banks.map(b => `<option value="${b}" ${state.paymentBank === b ? 'selected' : ''}>${b}</option>`).join('')}
-                    </select>
-                  </div>
-                ` : ''}
-
-                <div>
-                  <label style="font-size:0.78rem; font-weight:700; color:#60a5fa; text-transform:uppercase; display:block; margin-bottom:0.35rem;">
-                    Últimos 5 dígitos del comprobante / referencia (Requerido):
-                  </label>
-                  <input type="text" id="confirm_payment_ref" maxlength="5" class="input-field" placeholder="Ej. 12345" style="width:100%; font-size:1.1rem; letter-spacing:0.15em; font-weight:700;" value="${state.paymentReference || ''}" oninput="state.paymentReference=this.value.replace(/\\D/g,'').slice(0,5); state.paymentModalError=null;">
-                  <span style="font-size:0.7rem; color:#9ca3af; margin-top:0.2rem; display:block;">Ingrese exactamente los 5 números de la referencia o voucher.</span>
-                </div>
-
+            <!-- Resumen de Balance en Tiempo Real -->
+            <div style="background:rgba(15,23,42,0.9); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:0.85rem 1rem; margin-bottom:1.25rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                <span style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Total Factura:</span>
+                <span style="font-size:0.85rem; font-weight:700; color:#f1f5f9;">$${amountUSD.toFixed(2)} USD (${amountVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES)</span>
               </div>
-            ` : ''}
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.35rem;">
+                <span style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Total Asignado en Métodos:</span>
+                <span id="split_total_assigned">
+                  <span style="color:#34d399; font-weight:800; font-size:1.05rem;">$${currentAssignedUSD.toFixed(2)} USD</span>
+                  <span style="color:#94a3b8; font-size:0.8rem; margin-left:0.35rem;">(${currentAssignedVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES)</span>
+                </span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-top:0.4rem; border-top:1px dashed rgba(255,255,255,0.1);">
+                <span style="font-size:0.8rem; color:#94a3b8; font-weight:700;">Estado de Cobertura:</span>
+                <span id="split_total_remaining">
+                  ${isFullyCovered 
+                    ? `<span style="color:#10b981; font-weight:800; font-size:0.95rem;">✓ Cubierto 100%</span>`
+                    : (currentDiffUSD > 0.05
+                        ? `<span style="color:#f59e0b; font-weight:800; font-size:0.95rem;">Faltan: $${currentDiffUSD.toFixed(2)} USD</span> <span style="color:#94a3b8; font-size:0.75rem; margin-left:0.25rem;">(${currentDiffVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES)</span>`
+                        : `<span style="color:#60a5fa; font-weight:800; font-size:0.95rem;">Vuelto / Excedente: $${Math.abs(currentDiffUSD).toFixed(2)} USD</span> <span style="color:#94a3b8; font-size:0.75rem; margin-left:0.25rem;">(${Math.abs(currentDiffVES).toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES)</span>`
+                      )
+                  }
+                </span>
+              </div>
+            </div>
 
             ${isEnrollmentInModal ? `
               <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); padding:1rem; border-radius:10px; margin-bottom:1.25rem;">
@@ -1864,8 +2083,8 @@
 
             <div style="display:flex; justify-content:flex-end; gap:0.75rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;">
               <button onclick="state.showPaymentConfirmModal=false; render();" class="btn btn-secondary" style="padding:0.65rem 1.25rem;">Cancelar</button>
-              <button onclick="confirmAndProcessPayment()" class="btn btn-accent" style="padding:0.65rem 1.5rem; font-weight:700;">
-                Confirmar y Registrar Pago
+              <button id="btn_submit_split_payment" onclick="confirmAndProcessPayment()" class="btn btn-accent" style="padding:0.65rem 1.5rem; font-weight:700; background:${isFullyCovered ? 'linear-gradient(135deg, #10b981, #059669)' : ''};">
+                <i data-lucide="check-circle-2"></i> Confirmar y Registrar Pago ($${amountUSD.toFixed(2)} USD)
               </button>
             </div>
 
@@ -2331,7 +2550,7 @@
 
             ${r.canPrintInvoice === false ? `
               <div style="padding:0.75rem 1rem; background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.4); border-radius:8px; color:#f87171; font-size:0.85rem; font-weight:700; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
-                <i data-lucide="lock"></i> 🔒 FACTURA BLOQUEADA: Este pago incluye Pago Móvil o Transferencia sin conciliar con el estado de cuenta del banco.
+                <i data-lucide="lock"></i> 🔒 FACTURA BLOQUEADA: Este pago incluye Transferencia Bancaria sin conciliar con el estado de cuenta del banco.
               </div>
             ` : ''}
 
