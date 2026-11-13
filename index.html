@@ -213,7 +213,7 @@
       groupTuitionInputs: { 'Primaria': 50.0, 'Educación Básica': 50.0, 'Media y Diversificada': 50.0 },
       gradeTuitionInputs: {},
       reEnrollmentData: null,
-      reEnrollmentEnabled: true,
+      reEnrollmentEnabled: false,
       loadingReEnrollment: false,
       paperControl: null,
       showPaperCheckModal: false,
@@ -259,12 +259,14 @@
       state.user = user;
       setStorageItem('cdnj_token', token);
       setStorageItem('cdnj_user', JSON.stringify(user));
+      loadReEnrollmentSettings();
       render();
     }
 
     function logout() {
       state.token = null;
       state.user = null;
+      state.reEnrollmentEnabled = false;
       removeStorageItem('cdnj_token');
       removeStorageItem('cdnj_user');
       render();
@@ -1030,6 +1032,7 @@
       const data = await res.json();
       state.familyData = data;
       state.exchangeRate = data.exchangeRate || 36.50;
+      loadReEnrollmentSettings().catch(() => {});
 
       let allDebts = [];
       if (data.students) {
@@ -1061,6 +1064,7 @@
       const data = await res.json();
       state.familyData = data;
       state.exchangeRate = data.exchangeRate || 36.50;
+      loadReEnrollmentSettings().catch(() => {});
 
       let allDebts = [];
       if (data.students) {
@@ -1541,7 +1545,11 @@
 
       try {
         const selectedDebtsObjs = state.debts.filter(d => state.selectedDebtIds.includes(d.id));
-        const isEnrollmentPayment = selectedDebtsObjs.some(d => (d.feeConcept?.code || d.code || '').startsWith('MAT-') || (d.feeConcept?.name || d.name || '').toLowerCase().includes('matrícula') || (d.feeConcept?.name || d.name || '').toLowerCase().includes('inscripción'));
+        const isEnrollmentPayment = state.reEnrollmentEnabled && selectedDebtsObjs.some(d => {
+          const c = (d.feeConcept?.code || d.code || '').toUpperCase();
+          const n = (d.feeConcept?.name || d.name || '').toUpperCase();
+          return c.includes('2027-2028') || c.includes('2028') || n.includes('2027-2028');
+        });
 
         const reEnrollmentData = {};
         if (isEnrollmentPayment && state.selectedStudent?.id) {
@@ -1706,7 +1714,11 @@
       const banks = ['VENEZUELA', 'BANESCO', 'BANCA AMIGA', 'MERCANTIL', 'PROVINCIAL'];
 
       const selectedDebtsObjsModal = state.debts.filter(d => state.selectedDebtIds.includes(d.id));
-      const isEnrollmentInModal = state.reEnrollmentEnabled && selectedDebtsObjsModal.some(d => (d.feeConcept?.code || d.code || '').startsWith('MAT-') || (d.feeConcept?.name || d.name || '').toLowerCase().includes('matrícula') || (d.feeConcept?.name || d.name || '').toLowerCase().includes('inscripción'));
+      const isEnrollmentInModal = state.reEnrollmentEnabled && selectedDebtsObjsModal.some(d => {
+        const c = (d.feeConcept?.code || d.code || '').toUpperCase();
+        const n = (d.feeConcept?.name || d.name || '').toUpperCase();
+        return c.includes('2027-2028') || c.includes('2028') || n.includes('2027-2028');
+      });
 
       return `
         <div class="modal-overlay" onclick="state.showPaymentConfirmModal=false; render();">
@@ -3127,13 +3139,18 @@
     }
 
     async function loadReEnrollmentSettings() {
+      if (!state.token) return;
       try {
         const res = await fetch(`${API_BASE}/api/payments/re-enrollment/settings`, {
           headers: { Authorization: `Bearer ${state.token}` }
         });
         if (res.ok) {
           const data = await res.json();
-          state.reEnrollmentEnabled = data.enabled;
+          const prev = state.reEnrollmentEnabled;
+          state.reEnrollmentEnabled = !!data.enabled;
+          if (prev !== state.reEnrollmentEnabled) {
+            render();
+          }
         }
       } catch (e) {
         console.error('Error cargando configuración re-inscripción:', e);
@@ -6078,6 +6095,9 @@
       }
 
       render();
+      if (state.token) {
+        loadReEnrollmentSettings();
+      }
       loadTimeSimulationData().then(() => render()).catch(e => console.error("Error async loadTimeSimulationData:", e));
     }
 

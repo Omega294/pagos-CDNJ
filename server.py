@@ -2858,20 +2858,24 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                         debt_info = c.fetchone()
                         if debt_info:
                             concept_code_d, st_id_d, curr_g_d, curr_s_d = debt_info[0], debt_info[1], debt_info[2], debt_info[3]
-                            if concept_code_d.startswith("MAT-") or "MATRICULA" in concept_code_d.upper() or "INSCRIPCION" in concept_code_d.upper():
-                                re_enrollment_data = body.get("reEnrollmentData", {})
-                                st_re_info = re_enrollment_data.get(st_id_d, {}) if isinstance(re_enrollment_data, dict) else {}
-                                next_g = st_re_info.get("nextGrade") or suggest_next_grade(curr_g_d)
-                                next_s = st_re_info.get("nextSection") or curr_s_d or "A"
-                                prom_status = st_re_info.get("promotedStatus") or "PROMOTED"
-                                sy = concept_code_d.replace("MAT-", "") if concept_code_d.startswith("MAT-") else "2027-2028"
+                            if ("2027-2028" in concept_code_d or "2028" in concept_code_d):
+                                c.execute("SELECT value_text FROM system_settings WHERE key_name = 're_enrollment_active';")
+                                re_active_row = c.fetchone()
+                                is_re_active = (re_active_row and re_active_row[0] == '1')
+                                if is_re_active:
+                                    re_enrollment_data = body.get("reEnrollmentData", {})
+                                    st_re_info = re_enrollment_data.get(st_id_d, {}) if isinstance(re_enrollment_data, dict) else {}
+                                    next_g = st_re_info.get("nextGrade") or suggest_next_grade(curr_g_d)
+                                    next_s = st_re_info.get("nextSection") or curr_s_d or "A"
+                                    prom_status = st_re_info.get("promotedStatus") or "PROMOTED"
+                                    sy = concept_code_d.replace("MAT-", "") if concept_code_d.startswith("MAT-") else "2027-2028"
 
-                                re_record_id = f"re_{int(time.time() * 1000)}_{st_id_d}"
-                                c.execute("""
-                                INSERT INTO re_enrollment_records (id, student_id, school_year, payment_id, current_grade, next_grade, next_section, promoted_status, enrolled_at, created_at)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                                ON CONFLICT(id) DO UPDATE SET next_grade=excluded.next_grade, next_section=excluded.next_section, promoted_status=excluded.promoted_status;
-                                """, (re_record_id, st_id_d, sy, payment_id, curr_g_d, next_g, next_s, prom_status, now_str, now_str))
+                                    re_record_id = f"re_{int(time.time() * 1000)}_{st_id_d}"
+                                    c.execute("""
+                                    INSERT INTO re_enrollment_records (id, student_id, school_year, payment_id, current_grade, next_grade, next_section, promoted_status, enrolled_at, created_at)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    ON CONFLICT(id) DO UPDATE SET next_grade=excluded.next_grade, next_section=excluded.next_section, promoted_status=excluded.promoted_status;
+                                    """, (re_record_id, st_id_d, sy, payment_id, curr_g_d, next_g, next_s, prom_status, now_str, now_str))
 
                         remaining_to_apply -= pay_for_this_debt
 
