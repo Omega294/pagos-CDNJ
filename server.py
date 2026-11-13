@@ -2839,6 +2839,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                     t_rif = (body.get("taxpayerRif") or "").strip().upper()
                     t_addr = (body.get("taxpayerAddress") or "").strip()
                     t_phone = (body.get("taxpayerPhone") or "").strip()
+                    target_student_id = body.get("studentId") or (debt_rows[0][6] if debt_rows else None)
 
                     if not t_name or not t_rif:
                         c.execute("""
@@ -2846,7 +2847,7 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                         FROM student_guardians sg
                         JOIN guardians g ON sg.guardian_id = g.id
                         WHERE sg.student_id = ? LIMIT 1;
-                        """, (student_id,))
+                        """, (target_student_id,))
                         g_def = c.fetchone()
                         if g_def:
                             if not t_name:
