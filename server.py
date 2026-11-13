@@ -976,6 +976,10 @@ def init_db():
         "ALTER TABLE students ADD COLUMN status TEXT DEFAULT 'ACTIVE';",
         "ALTER TABLE students ADD COLUMN section TEXT DEFAULT 'A';",
         "ALTER TABLE payments ADD COLUMN paper_number TEXT;",
+        "ALTER TABLE payments ADD COLUMN taxpayer_name TEXT;",
+        "ALTER TABLE payments ADD COLUMN taxpayer_rif TEXT;",
+        "ALTER TABLE payments ADD COLUMN taxpayer_address TEXT;",
+        "ALTER TABLE payments ADD COLUMN taxpayer_phone TEXT;",
         "ALTER TABLE cash_closings ADD COLUMN cashier_id TEXT;"
     ]:
         try:
@@ -1614,7 +1618,8 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
             c = conn.cursor()
             c.execute("""
             SELECT p.id, p.receipt_number, p.total_usd, p.exchange_rate, p.total_local, p.status,
-                   p.void_reason, p.created_at, u.full_name, u_v.full_name, p.voided_at, p.paper_number
+                   p.void_reason, p.created_at, u.full_name, u_v.full_name, p.voided_at, p.paper_number,
+                   COALESCE(p.taxpayer_name, ''), COALESCE(p.taxpayer_rif, ''), COALESCE(p.taxpayer_address, ''), COALESCE(p.taxpayer_phone, '')
             FROM payments p
             JOIN users u ON p.user_id = u.id
             LEFT JOIN users u_v ON p.voided_by_id = u_v.id
@@ -1673,6 +1678,9 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 })
 
             conn.close()
+            default_g_name = items[0]["debt"]["student"]["guardians"][0]["guardian"]["fullName"] if items else ""
+            default_g_rif = items[0]["debt"]["student"]["guardians"][0]["guardian"]["rif"] if items else ""
+
             return self.send_json({
                 "id": r[0],
                 "receiptNumber": r[1],
@@ -1686,6 +1694,10 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "voidedBy": {"fullName": r[9]} if r[9] else None,
                 "voidedAt": r[10],
                 "paperNumber": r[11],
+                "taxpayerName": r[12] if len(r) > 12 and r[12] else default_g_name,
+                "taxpayerRif": r[13] if len(r) > 13 and r[13] else default_g_rif,
+                "taxpayerAddress": r[14] if len(r) > 14 and r[14] else "",
+                "taxpayerPhone": r[15] if len(r) > 15 and r[15] else "",
                 "paymentItems": items,
                 "methods": methods,
                 "canPrintInvoice": can_print_invoice
@@ -2822,10 +2834,34 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                     payment_id = f"pay_{int(time.time() * 1000)}"
                     now_str = datetime.now(timezone.utc).isoformat()
 
+                    # Taxpayer details (Default to student's guardian if not custom)
+                    t_name = (body.get("taxpayerName") or "").strip()
+                    t_rif = (body.get("taxpayerRif") or "").strip().upper()
+                    t_addr = (body.get("taxpayerAddress") or "").strip()
+                    t_phone = (body.get("taxpayerPhone") or "").strip()
+
+                    if not t_name or not t_rif:
+                        c.execute("""
+                        SELECT g.full_name, COALESCE(g.rif, ''), COALESCE(g.address, ''), COALESCE(g.phone, '')
+                        FROM student_guardians sg
+                        JOIN guardians g ON sg.guardian_id = g.id
+                        WHERE sg.student_id = ? LIMIT 1;
+                        """, (student_id,))
+                        g_def = c.fetchone()
+                        if g_def:
+                            if not t_name:
+                                t_name = g_def[0]
+                            if not t_rif:
+                                t_rif = g_def[1]
+                            if not t_addr:
+                                t_addr = g_def[2]
+                            if not t_phone:
+                                t_phone = g_def[3]
+
                     c.execute("""
-                    INSERT INTO payments (id, receipt_number, user_id, total_usd, exchange_rate, total_local, status, created_at, paper_number)
-                    VALUES (?,?,?,?,?,?,'COMPLETED',?,?);
-                    """, (payment_id, receipt_num, user["userId"], total_usd, rate, total_local, now_str, assigned_paper_str))
+                    INSERT INTO payments (id, receipt_number, user_id, total_usd, exchange_rate, total_local, status, created_at, paper_number, taxpayer_name, taxpayer_rif, taxpayer_address, taxpayer_phone)
+                    VALUES (?,?,?,?,?,?,'COMPLETED',?,?,?,?,?,?);
+                    """, (payment_id, receipt_num, user["userId"], total_usd, rate, total_local, now_str, assigned_paper_str, t_name, t_rif, t_addr, t_phone))
 
                     # Distribuir el abono / pago
                     remaining_to_apply = total_usd
@@ -3862,6 +3898,44 @@ class CDNJHandler(http.server.BaseHTTPRequestHandler):
                 "recipientName": target_name,
                 "receiptNumber": p_row[0],
                 "message": f"Comprobante digital {p_row[0]} enviado exitosamente a {target_email}"
+            })
+
+        # Update Taxpayer on Receipt / Invoice
+        if path.startswith("/api/payments/receipts/") and path.endswith("/taxpayer"):
+            user = self.get_auth_user()
+            if not self.check_perm(user, "payments:cashier:view_receipt"):
+                return self.send_json({"error": "Acceso Denegado"}, 403)
+
+            receipt_id = path.split("/")[4]
+            taxpayer_name = (body.get("taxpayerName") or "").strip()
+            taxpayer_rif = (body.get("taxpayerRif") or "").strip().upper()
+            taxpayer_address = (body.get("taxpayerAddress") or "").strip()
+            taxpayer_phone = (body.get("taxpayerPhone") or "").strip()
+
+            if not taxpayer_name:
+                return self.send_json({"error": "Validación", "message": "Debe indicar la Razón Social o Nombre y Apellido del contribuyente."}, 400)
+            if not taxpayer_rif:
+                return self.send_json({"error": "Validación", "message": "Debe indicar el RIF del contribuyente (J, G, V o E)."}, 400)
+
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("""
+            UPDATE payments
+            SET taxpayer_name = ?, taxpayer_rif = ?, taxpayer_address = ?, taxpayer_phone = ?
+            WHERE id = ?;
+            """, (taxpayer_name, taxpayer_rif, taxpayer_address, taxpayer_phone, receipt_id))
+            if c.rowcount == 0:
+                conn.close()
+                return self.send_json({"error": "No encontrado", "message": "Recibo no encontrado"}, 404)
+            conn.commit()
+            conn.close()
+
+            return self.send_json({
+                "success": True,
+                "message": "Contribuyente actualizado exitosamente para esta factura.",
+                "taxpayerName": taxpayer_name,
+                "taxpayerRif": taxpayer_rif,
+                "taxpayerAddress": taxpayer_address
             })
 
         # Create or Update Student & Guardian

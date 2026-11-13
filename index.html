@@ -199,6 +199,12 @@
       rifModalAmountUSD: 0,
       showPaymentConfirmModal: false,
       splitPayments: [],
+      customTaxpayer: null,
+      showChangeTaxpayerModal: false,
+      changeTaxpayerContext: 'checkout',
+      changeTaxpayerReceiptId: null,
+      changeTaxpayerForm: { name: '', rifType: 'J', rifDigits: '', address: '' },
+      changeTaxpayerError: null,
       paymentCurrency: 'USD',
       paymentMethod: 'CASH_USD',
       paymentReference: '',
@@ -425,6 +431,7 @@
           ${state.showClosingModal ? renderClosingModalHTML() : ''}
           ${state.showRifCaptureModal ? renderRifCaptureModalHTML() : ''}
           ${state.showPaymentConfirmModal ? renderPaymentConfirmModalHTML() : ''}
+          ${state.showChangeTaxpayerModal ? renderChangeTaxpayerModalHTML() : ''}
           ${state.showStudentModal ? renderStudentModalHTML() : ''}
           ${state.showBatchModal ? renderBatchModalHTML() : ''}
           ${(state.showTimeMachineModal && state.user?.roles && state.user.roles.includes('SUPERADMIN')) ? renderTimeMachineModalHTML() : ''}
@@ -1724,12 +1731,16 @@
             partialAmountUSD: state.partialAmountUSD,
             methods: methodsObj,
             exchangeRate: state.exchangeRate,
-            reEnrollmentData: reEnrollmentData
+            reEnrollmentData: reEnrollmentData,
+            taxpayerName: state.customTaxpayer?.name || null,
+            taxpayerRif: state.customTaxpayer?.rif || null,
+            taxpayerAddress: state.customTaxpayer?.address || null
           })
         });
         const data = await res.json();
         if (res.ok) {
           state.showPaymentConfirmModal = false;
+          state.customTaxpayer = null;
           if (data.paperCheckRequired) {
             state.showPaperCheckModal = true;
             state.pendingPaperCheckNumber = data.paperNumber;
@@ -1847,13 +1858,18 @@
             </div>
 
             <!-- Botones de Acción -->
-            <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
-              <button onclick="state.showRifCaptureModal=false; render();" class="btn btn-secondary" style="padding:0.65rem 1.25rem;">
-                Cancelar
+            <div style="display:flex; gap:0.75rem; justify-content:space-between; align-items:center; flex-wrap:wrap;">
+              <button onclick="state.showRifCaptureModal=false; openChangeTaxpayerModal('checkout');" class="btn btn-secondary" style="border:1px dashed #6366f1; color:#a5b4fc; font-size:0.8rem; padding:0.6rem 0.9rem;">
+                <i data-lucide="building"></i> Facturar a Empresa u Otro RIF (J / G)
               </button>
-              <button onclick="saveRifAndProceedWithPayment('${guardian.id}', '${rifBase.prefix}')" class="btn btn-primary" style="padding:0.65rem 1.5rem; background:linear-gradient(135deg, #6366f1, #4f46e5); font-weight:700;">
-                <i data-lucide="check"></i> Guardar RIF y Continuar al Pago
-              </button>
+              <div style="display:flex; gap:0.6rem;">
+                <button onclick="state.showRifCaptureModal=false; render();" class="btn btn-secondary" style="padding:0.65rem 1.1rem;">
+                  Cancelar
+                </button>
+                <button onclick="saveRifAndProceedWithPayment('${guardian.id}', '${rifBase.prefix}')" class="btn btn-primary" style="padding:0.65rem 1.3rem; background:linear-gradient(135deg, #6366f1, #4f46e5); font-weight:700;">
+                  <i data-lucide="check"></i> Guardar RIF y Continuar
+                </button>
+              </div>
             </div>
 
           </div>
@@ -1893,6 +1909,11 @@
       const currentDiffVES = amountVES - currentAssignedVES;
       const isFullyCovered = Math.abs(currentDiffUSD) <= 0.05 || currentAssignedUSD >= (amountUSD - 0.02);
 
+      const guardian = state.rifModalGuardian || state.familyData?.guardian || state.selectedStudent?.guardians?.[0]?.guardian;
+      const isCustomTaxpayer = !!state.customTaxpayer;
+      const taxpayerDisplayName = isCustomTaxpayer ? state.customTaxpayer.name : (guardian?.fullName || 'Representante Legal');
+      const taxpayerDisplayRif = isCustomTaxpayer ? state.customTaxpayer.rif : (guardian?.rif || 'Sin RIF');
+
       return `
         <div class="modal-overlay" onclick="state.showPaymentConfirmModal=false; render();">
           <div class="modal-content" style="max-width:650px; background:#111827; border:1px solid rgba(99,102,241,0.3); box-shadow:0 25px 50px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;" onclick="event.stopPropagation();">
@@ -1905,7 +1926,7 @@
             </div>
 
             <!-- Resumen Monto a Facturar -->
-            <div style="background:rgba(17,24,39,0.85); border:1px solid rgba(255,255,255,0.1); padding:1rem; border-radius:12px; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center;">
+            <div style="background:rgba(17,24,39,0.85); border:1px solid rgba(255,255,255,0.1); padding:1rem; border-radius:12px; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
               <div>
                 <span style="font-size:0.75rem; color:#9ca3af; text-transform:uppercase; font-weight:700;">Total Factura a Pagar:</span>
                 <div style="font-size:1.5rem; font-weight:900; color:${state.isPartial ? '#fbbf24' : '#34d399'};">$${amountUSD.toFixed(2)} USD</div>
@@ -1913,6 +1934,35 @@
               <div style="text-align:right;">
                 <span style="font-size:0.75rem; color:#9ca3af;">Tasa Oficial CDNJ: <strong>${state.exchangeRate.toFixed(2)} VES/USD</strong></span>
                 <div style="font-size:1.15rem; font-weight:800; color:#f3f4f6;">${amountVES.toLocaleString('es-VE', {minimumFractionDigits:2, maximumFractionDigits:2})} VES</div>
+              </div>
+            </div>
+
+            <!-- Contribuyente para la Factura (Por defecto el Representante o Personalizado) -->
+            <div style="background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); border-radius:10px; padding:0.75rem 1rem; margin-bottom:1.25rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+              <div>
+                <span style="font-size:0.7rem; color:#818cf8; font-weight:700; text-transform:uppercase; display:block; margin-bottom:0.15rem;">
+                  📄 Facturar a Nombre de (Contribuyente):
+                </span>
+                <div style="font-size:0.95rem; font-weight:800; color:#f3f4f6; display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                  <span>${taxpayerDisplayName}</span>
+                  <span style="color:#38bdf8; font-family:'Courier New', monospace; font-size:0.92rem; font-weight:800;">(${taxpayerDisplayRif})</span>
+                  ${isCustomTaxpayer 
+                    ? `<span style="background:#4f46e5; color:#ffffff; font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:700;">Empresa/Personalizado</span>` 
+                    : `<span style="background:rgba(255,255,255,0.08); color:#9ca3af; font-size:0.65rem; padding:2px 6px; border-radius:4px; font-weight:600;">Representante (Por defecto)</span>`
+                  }
+                </div>
+                ${isCustomTaxpayer && state.customTaxpayer?.address ? `<div style="font-size:0.72rem; color:#94a3b8; margin-top:0.15rem;">Dir: ${state.customTaxpayer.address}</div>` : ''}
+              </div>
+
+              <div style="display:flex; gap:0.4rem;">
+                <button type="button" onclick="openChangeTaxpayerModal('checkout')" class="btn btn-secondary btn-sm" style="font-size:0.78rem; padding:0.4rem 0.75rem; border:1px solid #6366f1; color:#a5b4fc; background:rgba(99,102,241,0.15); font-weight:700;">
+                  <i data-lucide="edit-3"></i> Cambiar Contribuyente
+                </button>
+                ${isCustomTaxpayer ? `
+                  <button type="button" onclick="resetTaxpayerToDefault()" class="btn btn-secondary btn-sm" style="font-size:0.75rem; padding:0.4rem 0.6rem; color:#f87171; border-color:rgba(239,68,68,0.3);" title="Restablecer al Representante Original">
+                    ✕ Restablecer
+                  </button>
+                ` : ''}
               </div>
             </div>
 
@@ -2125,6 +2175,262 @@
 
     async function loadTransactions() {
       return loadAdminDashboard();
+    }
+
+    function updateTaxpayerPreviewDOM() {
+      const form = state.changeTaxpayerForm;
+      if (!form) return;
+      const rawDigits = String(form.rifDigits || '').replace(/\D/g, '').slice(0, 9);
+      let preview = `${form.rifType || 'J'}-`;
+      if (rawDigits.length > 8) {
+        preview += `${rawDigits.slice(0, 8)}-${rawDigits.slice(8, 9)}`;
+      } else if (rawDigits.length > 0) {
+        preview += `${rawDigits}`;
+      } else {
+        preview += `________-_`;
+      }
+      const el = document.getElementById('taxpayer_rif_preview_badge');
+      if (el) el.innerText = preview;
+    }
+
+    function openChangeTaxpayerModal(context, receiptId = null) {
+      state.changeTaxpayerContext = context;
+      state.changeTaxpayerReceiptId = receiptId;
+      state.changeTaxpayerError = null;
+
+      if (context === 'checkout') {
+        if (state.customTaxpayer) {
+          const parts = (state.customTaxpayer.rif || '').split('-');
+          const type = ['J', 'G', 'V', 'E'].includes(parts[0]) ? parts[0] : 'J';
+          const digits = parts.slice(1).join('').replace(/\D/g, '');
+          state.changeTaxpayerForm = {
+            name: state.customTaxpayer.name || '',
+            rifType: type,
+            rifDigits: digits,
+            address: state.customTaxpayer.address || ''
+          };
+        } else {
+          state.changeTaxpayerForm = {
+            name: '',
+            rifType: 'J',
+            rifDigits: '',
+            address: ''
+          };
+        }
+      } else if (context === 'receipt' && state.activeReceiptData) {
+        const r = state.activeReceiptData;
+        const rRif = r.taxpayerRif || '';
+        const parts = rRif.split('-');
+        const type = ['J', 'G', 'V', 'E'].includes(parts[0]) ? parts[0] : 'J';
+        const digits = parts.slice(1).join('').replace(/\D/g, '');
+        state.changeTaxpayerForm = {
+          name: r.taxpayerName || '',
+          rifType: type,
+          rifDigits: digits,
+          address: r.taxpayerAddress || ''
+        };
+      }
+      state.showChangeTaxpayerModal = true;
+      render();
+    }
+
+    function resetTaxpayerToDefault() {
+      state.customTaxpayer = null;
+      state.showChangeTaxpayerModal = false;
+      render();
+    }
+
+    async function saveTaxpayerAndApply() {
+      const form = state.changeTaxpayerForm;
+      if (!form) return;
+
+      const name = String(form.name || '').trim();
+      const rawDigits = String(form.rifDigits || '').replace(/\D/g, '').slice(0, 9);
+      const type = form.rifType || 'J';
+
+      if (!name || name.length < 2) {
+        state.changeTaxpayerError = 'Debe ingresar la Razón Social o Nombre y Apellido (mínimo 2 letras).';
+        render();
+        return;
+      }
+
+      if (!rawDigits || rawDigits.length < 8) {
+        state.changeTaxpayerError = 'El número de RIF debe tener al menos 8 o 9 dígitos numéricos.';
+        render();
+        return;
+      }
+
+      const base8 = rawDigits.slice(0, 8);
+      const digExtra = rawDigits.length > 8 ? rawDigits.slice(8, 9) : '0';
+      const fullRif = `${type}-${base8}-${digExtra}`;
+      const address = String(form.address || '').trim();
+
+      if (state.changeTaxpayerContext === 'checkout') {
+        state.customTaxpayer = {
+          name: name,
+          rif: fullRif,
+          address: address
+        };
+        state.showChangeTaxpayerModal = false;
+        state.changeTaxpayerError = null;
+        render();
+      } else if (state.changeTaxpayerContext === 'receipt') {
+        const receiptId = state.changeTaxpayerReceiptId;
+        if (!receiptId) return;
+
+        try {
+          const res = await fetch(`${API_BASE}/api/payments/receipts/${receiptId}/taxpayer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${state.token}` },
+            body: JSON.stringify({
+              taxpayerName: name,
+              taxpayerRif: fullRif,
+              taxpayerAddress: address
+            })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            state.showChangeTaxpayerModal = false;
+            state.changeTaxpayerError = null;
+            await openReceiptModal(receiptId);
+            render();
+          } else {
+            state.changeTaxpayerError = data.message || 'Error al actualizar el contribuyente.';
+            render();
+          }
+        } catch (e) {
+          state.changeTaxpayerError = 'Error de comunicación con el servidor.';
+          render();
+        }
+      }
+    }
+
+    function renderChangeTaxpayerModalHTML() {
+      if (!state.showChangeTaxpayerModal) return '';
+
+      const form = state.changeTaxpayerForm || { name: '', rifType: 'J', rifDigits: '', address: '' };
+      const rawDigits = String(form.rifDigits || '').replace(/\D/g, '').slice(0, 9);
+      
+      let preview = `${form.rifType || 'J'}-`;
+      if (rawDigits.length > 8) {
+        preview += `${rawDigits.slice(0, 8)}-${rawDigits.slice(8, 9)}`;
+      } else if (rawDigits.length > 0) {
+        preview += `${rawDigits}`;
+      } else {
+        preview += `________-_`;
+      }
+
+      const isCheckout = state.changeTaxpayerContext === 'checkout';
+
+      return `
+        <div class="modal-overlay" style="z-index:9999;" onclick="state.showChangeTaxpayerModal=false; render();">
+          <div class="modal-content" style="max-width:540px; background:#111827; border:1px solid rgba(99,102,241,0.4); box-shadow:0 25px 60px rgba(0,0,0,0.8);" onclick="event.stopPropagation();">
+            
+            <!-- Header Modal -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:0.75rem;">
+              <div style="display:flex; align-items:center; gap:0.6rem;">
+                <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #6366f1, #4f46e5); display:flex; align-items:center; justify-content:center; color:#ffffff; font-size:1.2rem;">
+                  <i data-lucide="building"></i>
+                </div>
+                <div>
+                  <h3 style="font-size:1.15rem; font-weight:800; color:#f3f4f6; margin:0;">Cambiar Contribuyente de la Factura</h3>
+                  <span style="font-size:0.75rem; color:#818cf8; font-weight:600;">Emisión personalizada (Empresas, Gobierno o Particulares)</span>
+                </div>
+              </div>
+              <button onclick="state.showChangeTaxpayerModal=false; render();" class="btn btn-secondary btn-sm" style="padding:0.25rem 0.6rem;">✕</button>
+            </div>
+
+            <!-- Explicación -->
+            <p style="font-size:0.82rem; color:#cbd5e1; margin-bottom:1.25rem; line-height:1.4;">
+              Por defecto, la factura se emite a nombre del <strong>representante del alumno</strong>. Si desea que la factura salga a nombre de una <strong>Empresa (J)</strong>, <strong>Ente Público / Gobierno (G)</strong> u otra persona (V/E), ingrese los datos a continuación:
+            </p>
+
+            <!-- Formulario -->
+            <div style="display:flex; flex-direction:column; gap:1rem; margin-bottom:1.25rem;">
+              
+              <!-- RIF Tipo y Número -->
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#818cf8; text-transform:uppercase; display:block; margin-bottom:0.4rem;">
+                  1. Tipo y Número de RIF Fiscal (Requerido):
+                </label>
+                <div style="display:grid; grid-template-columns: 140px 1fr; gap:0.6rem;">
+                  <select class="input-field" style="font-weight:700; font-size:0.85rem;" onchange="state.changeTaxpayerForm.rifType=this.value; render();">
+                    <option value="J" ${form.rifType === 'J' ? 'selected' : ''}>J - Jurídico</option>
+                    <option value="G" ${form.rifType === 'G' ? 'selected' : ''}>G - Gobierno</option>
+                    <option value="V" ${form.rifType === 'V' ? 'selected' : ''}>V - Venezolano</option>
+                    <option value="E" ${form.rifType === 'E' ? 'selected' : ''}>E - Extranjero</option>
+                  </select>
+
+                  <input type="text" maxlength="9" placeholder="Ej. 123456789 (8 o 9 dígitos)"
+                    value="${form.rifDigits || ''}"
+                    oninput="state.changeTaxpayerForm.rifDigits=this.value.replace(/\\D/g, '').slice(0,9); updateTaxpayerPreviewDOM();"
+                    class="input-field" style="font-family:'Courier New', monospace; font-size:1.05rem; font-weight:800; letter-spacing:1px;"
+                  />
+                </div>
+                
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.4rem; padding:0.4rem 0.75rem; background:rgba(0,0,0,0.3); border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                  <span style="font-size:0.72rem; color:#9ca3af;">Formato RIF en Factura:</span>
+                  <span id="taxpayer_rif_preview_badge" style="font-family:'Courier New', monospace; font-weight:900; font-size:0.95rem; color:#38bdf8;">
+                    ${preview}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Razón Social o Nombre -->
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#818cf8; text-transform:uppercase; display:block; margin-bottom:0.4rem;">
+                  2. Razón Social o Nombre y Apellido (Requerido):
+                </label>
+                <input type="text" placeholder="Ej. Inversiones Horizonte C.A. / Alcaldía de Chacao / Pedro Pérez"
+                  value="${form.name || ''}"
+                  oninput="state.changeTaxpayerForm.name=this.value;"
+                  class="input-field" style="font-size:0.95rem; font-weight:700;"
+                />
+              </div>
+
+              <!-- Dirección Fiscal -->
+              <div>
+                <label style="font-size:0.75rem; font-weight:700; color:#9ca3af; text-transform:uppercase; display:block; margin-bottom:0.4rem;">
+                  3. Dirección Fiscal (Opcional):
+                </label>
+                <input type="text" placeholder="Ej. Av. Francisco de Miranda, Torre Delta, Piso 4, Caracas"
+                  value="${form.address || ''}"
+                  oninput="state.changeTaxpayerForm.address=this.value;"
+                  class="input-field" style="font-size:0.85rem;"
+                />
+              </div>
+
+            </div>
+
+            ${state.changeTaxpayerError ? `
+              <div style="padding:0.75rem; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.4); border-radius:8px; color:#f87171; font-size:0.82rem; font-weight:600; margin-bottom:1rem; display:flex; align-items:center; gap:0.5rem;">
+                <i data-lucide="alert-triangle"></i> ${state.changeTaxpayerError}
+              </div>
+            ` : ''}
+
+            <!-- Botones de Acción -->
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;">
+              <div>
+                ${(isCheckout && state.customTaxpayer) ? `
+                  <button type="button" onclick="resetTaxpayerToDefault(); state.showChangeTaxpayerModal=false; render();" class="btn btn-secondary btn-sm" style="color:#f87171; border-color:rgba(239,68,68,0.3);">
+                    Restablecer a Representante
+                  </button>
+                ` : ''}
+              </div>
+
+              <div style="display:flex; gap:0.6rem;">
+                <button onclick="state.showChangeTaxpayerModal=false; render();" class="btn btn-secondary" style="padding:0.6rem 1.1rem;">
+                  Cancelar
+                </button>
+                <button onclick="saveTaxpayerAndApply()" class="btn btn-primary" style="padding:0.6rem 1.4rem; background:linear-gradient(135deg, #6366f1, #4f46e5); font-weight:700;">
+                  <i data-lucide="check"></i> Guardar y Aplicar
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      `;
     }
 
     async function goToChargeRepresentative(repId) {
@@ -2538,6 +2844,9 @@
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
               <h3 style="font-size:1.1rem; color:#f3f4f6; font-weight:700;">Comprobante Oficial de Pago</h3>
               <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                <button onclick="openChangeTaxpayerModal('receipt', '${r.id}')" class="btn btn-secondary btn-sm" style="color:#818cf8; border:1px solid rgba(99,102,241,0.4);" title="Cambiar Contribuyente o Facturar a Empresa/Gobierno">
+                  <i data-lucide="building"></i> Cambiar Contribuyente
+                </button>
                 <button ${r.canPrintInvoice === false ? 'disabled title="Factura bloqueada hasta conciliar el pago con el banco"' : `onclick="printAndEmailReceipt('${r.id}')"`} class="btn btn-primary btn-sm" style="background:${r.canPrintInvoice === false ? '#6b7280' : 'linear-gradient(135deg, #10b981, #059669)'}; border:none; opacity:${r.canPrintInvoice === false ? '0.6' : '1'}; cursor:${r.canPrintInvoice === false ? 'not-allowed' : 'pointer'};">
                   <i data-lucide="${r.canPrintInvoice === false ? 'lock' : 'printer'}"></i> ${r.canPrintInvoice === false ? 'Factura Bloqueada' : 'Imprimir & Enviar al Correo'}
                 </button>
@@ -2591,9 +2900,12 @@
                   <strong>Código Estudiantil:</strong> ${student?.studentCode || 'N/A'}
                 </div>
                 <div>
-                  <strong>Representante:</strong> ${guardian?.fullName || 'N/A'}<br>
-                  <strong>RIF:</strong> <span style="font-family:'Courier New', monospace; font-weight:800; font-size:0.9rem; color:#111827;">${guardian?.rif || 'N/A'}</span><br>
-                  <strong>Correo Registrado:</strong> <span style="color:#2563eb; font-weight:700;">${guardian?.email || 'representante@gmail.com'}</span>
+                  <strong>Contribuyente / Facturado a:</strong> <span style="font-weight:800; color:#111827;">${r.taxpayerName || guardian?.fullName || 'N/A'}</span><br>
+                  <strong>RIF:</strong> <span style="font-family:'Courier New', monospace; font-weight:800; font-size:0.92rem; color:#111827;">${r.taxpayerRif || guardian?.rif || 'N/A'}</span><br>
+                  ${r.taxpayerAddress ? `<strong>Dirección Fiscal:</strong> <span style="font-size:0.75rem; color:#374151;">${r.taxpayerAddress}</span><br>` : ''}
+                  ${(r.taxpayerName && guardian?.fullName && r.taxpayerName.trim() !== guardian.fullName.trim()) 
+                    ? `<span style="font-size:0.72rem; color:#6b7280; font-style:italic;">(Representante del Alumno: ${guardian.fullName})</span>` 
+                    : `<strong>Correo Registrado:</strong> <span style="color:#2563eb; font-weight:700;">${guardian?.email || 'representante@gmail.com'}</span>`}
                 </div>
               </div>
 
